@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BTC Futures Backtest — Binance Ready</title>
+<title>BTC Futures Backtest — Adaptive Regime Strategy</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -129,6 +129,317 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
   .date-row{grid-template-columns:1fr}
   .header{flex-direction:column;align-items:flex-start;gap:8px}
 }
+
+/* ADAPTIVE REGIME STRATEGY */
+.adapt-panel{
+  background:linear-gradient(180deg,#182033,#111827);
+  border:0.5px solid #2f3b55;
+  border-radius:14px;
+  padding:1rem;
+  margin-bottom:.8rem;
+}
+.adapt-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+  margin-bottom:.85rem;
+}
+.adapt-title{
+  font-size:15px;
+  font-weight:800;
+  color:#f8fafc;
+}
+.adapt-sub{
+  margin-top:3px;
+  font-size:11px;
+  line-height:1.5;
+  color:#94a3b8;
+}
+.adapt-badge{
+  padding:5px 9px;
+  font-size:10px;
+  color:#4ade80;
+  background:#16a34a18;
+  border:1px solid #16a34a55;
+  border-radius:999px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.adapt-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:.85rem;
+}
+.adapt-box{
+  background:#0f172a;
+  border:1px solid #26354d;
+  border-radius:10px;
+  padding:.75rem;
+}
+.adapt-box .alabel{
+  font-size:10px;
+  color:#94a3b8;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-bottom:5px;
+}
+.adapt-box .aval{
+  color:#f8fafc;
+  font-weight:800;
+  font-size:18px;
+}
+.adapt-box .anote{
+  color:#64748b;
+  font-size:10px;
+  margin-top:3px;
+}
+.adapt-rules{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:.85rem;
+}
+.regime-card{
+  background:#101624;
+  border:1px solid #28364d;
+  border-radius:10px;
+  padding:.75rem;
+}
+.regime-card h4{
+  color:#e5e7eb;
+  font-size:12px;
+  margin-bottom:6px;
+}
+.regime-card p{
+  color:#94a3b8;
+  font-size:10.5px;
+  line-height:1.55;
+}
+.regime-trend h4{color:#60a5fa}
+.regime-range h4{color:#fbbf24}
+.regime-vol h4{color:#f87171}
+.regime-skip h4{color:#a78bfa}
+.adapt-controls{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+.adapt-control label{
+  display:block;
+  font-size:10px;
+  color:#94a3b8;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-bottom:5px;
+}
+.adapt-control select,.adapt-control input{
+  width:100%;
+  background:#0f172a;
+  border:1px solid #334155;
+  color:#e5e7eb;
+  border-radius:8px;
+  padding:7px 9px;
+  font-size:12px;
+}
+@media(max-width:760px){
+  .adapt-grid,.adapt-rules,.adapt-controls{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .adapt-grid,.adapt-rules,.adapt-controls{grid-template-columns:1fr}
+}
+
+
+/* LIVE SIGNAL MODE */
+.live-signal-panel{
+  background:linear-gradient(180deg,#111827,#0b1120);
+  border:0.5px solid #334155;
+  border-radius:14px;
+  padding:1rem;
+  margin-bottom:.8rem;
+}
+.live-signal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:.85rem;
+}
+.live-signal-title{
+  font-size:15px;
+  font-weight:800;
+  color:#f8fafc;
+}
+.live-signal-sub{
+  color:#94a3b8;
+  font-size:11px;
+  margin-top:3px;
+  line-height:1.5;
+}
+.live-status{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 10px;
+  border-radius:999px;
+  border:1px solid #64748b66;
+  color:#cbd5e1;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.live-status.on{
+  border-color:#16a34a66;
+  color:#4ade80;
+  background:#16a34a14;
+}
+.live-status-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#64748b;
+}
+.live-status.on .live-status-dot{
+  background:#16a34a;
+  animation:pulse 1.1s infinite;
+}
+.live-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:.85rem;
+}
+.live-box{
+  background:#0f172a;
+  border:1px solid #26354d;
+  border-radius:10px;
+  padding:.75rem;
+}
+.live-box .llabel{
+  font-size:10px;
+  color:#94a3b8;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-bottom:5px;
+}
+.live-box .lval{
+  color:#f8fafc;
+  font-size:18px;
+  font-weight:800;
+  font-variant-numeric:tabular-nums;
+}
+.live-box .lnote{
+  color:#64748b;
+  font-size:10px;
+  margin-top:3px;
+}
+.signal-card{
+  background:#0f172a;
+  border:1px solid #26354d;
+  border-radius:12px;
+  padding:.9rem;
+  margin-bottom:.75rem;
+}
+.signal-main{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+  margin-bottom:.7rem;
+}
+.signal-action{
+  font-size:24px;
+  font-weight:900;
+  color:#94a3b8;
+}
+.signal-action.buy{color:#4ade80}
+.signal-action.sell{color:#f87171}
+.signal-action.wait{color:#fbbf24}
+.signal-score{
+  font-size:12px;
+  color:#cbd5e1;
+  background:#111827;
+  border:1px solid #334155;
+  padding:7px 10px;
+  border-radius:8px;
+  font-weight:800;
+}
+.signal-levels{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:7px;
+}
+.level-box{
+  background:#111827;
+  border:1px solid #334155;
+  border-radius:8px;
+  padding:.65rem;
+}
+.level-box .label{
+  font-size:9px;
+  color:#94a3b8;
+  text-transform:uppercase;
+  margin-bottom:4px;
+}
+.level-box .value{
+  font-size:14px;
+  font-weight:800;
+  color:#f8fafc;
+  font-variant-numeric:tabular-nums;
+}
+.live-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+.live-btn{
+  border:1px solid #334155;
+  background:#0f172a;
+  color:#cbd5e1;
+  border-radius:8px;
+  padding:8px 12px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.live-btn.primary{
+  background:#2563eb;
+  border-color:#2563eb;
+  color:white;
+}
+.live-btn.danger{
+  background:#7f1d1d;
+  border-color:#991b1b;
+  color:white;
+}
+.live-log{
+  margin-top:.75rem;
+  max-height:170px;
+  overflow:auto;
+  border:1px solid #26354d;
+  border-radius:10px;
+  background:#0b1120;
+}
+.live-log-row{
+  display:grid;
+  grid-template-columns:70px 60px 1fr 75px;
+  gap:6px;
+  padding:7px 9px;
+  border-bottom:1px solid #1f2a3d;
+  font-size:11px;
+  color:#cbd5e1;
+}
+.live-log-row:last-child{border-bottom:none}
+.live-log-row .buy{color:#4ade80;font-weight:800}
+.live-log-row .sell{color:#f87171;font-weight:800}
+.live-log-row .wait{color:#fbbf24;font-weight:800}
+@media(max-width:760px){
+  .live-grid,.signal-levels{grid-template-columns:repeat(2,1fr)}
+  .live-log-row{grid-template-columns:60px 50px 1fr}
+  .live-log-row span:last-child{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -140,7 +451,7 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
     <div class="brand-icon">₿</div>
     <div>
       <div class="brand-name">BTC Futures Backtest</div>
-      <div class="brand-sub">Binance Futures · Risk Management · TP:SL 2:1</div>
+      <div class="brand-sub">Binance Futures · Adaptive Regime · Dynamic TP/SL</div>
     </div>
   </div>
   <div class="live-badge"><div class="live-dot"></div>Binance API Live</div>
@@ -190,6 +501,147 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
   </div>
 </div>
 
+
+
+<!-- LIVE SIGNAL MODE -->
+<div class="live-signal-panel">
+  <div class="live-signal-head">
+    <div>
+      <div class="live-signal-title">Live Signal Mode — BTCUSDT Futures</div>
+      <div class="live-signal-sub">Mode sinyal realtime memakai strategi Adaptive Regime yang sama dengan backtest. Candle diambil dari Binance Futures WebSocket.</div>
+    </div>
+    <div class="live-status" id="liveStatus"><span class="live-status-dot"></span><span id="liveStatusText">OFFLINE</span></div>
+  </div>
+
+  <div class="live-grid">
+    <div class="live-box">
+      <div class="llabel">Live price</div>
+      <div class="lval" id="livePrice">$--</div>
+      <div class="lnote">BTCUSDT futures</div>
+    </div>
+    <div class="live-box">
+      <div class="llabel">Regime</div>
+      <div class="lval" id="liveRegime">--</div>
+      <div class="lnote">trend / range / vol</div>
+    </div>
+    <div class="live-box">
+      <div class="llabel">Auto leverage</div>
+      <div class="lval" id="liveLev">--</div>
+      <div class="lnote">berdasarkan kondisi</div>
+    </div>
+    <div class="live-box">
+      <div class="llabel">Last candle</div>
+      <div class="lval" id="liveCandle">--</div>
+      <div class="lnote">menunggu close</div>
+    </div>
+  </div>
+
+  <div class="signal-card">
+    <div class="signal-main">
+      <div class="signal-action wait" id="signalAction">WAIT</div>
+      <div class="signal-score" id="signalScore">Score --/10</div>
+    </div>
+    <div class="signal-levels">
+      <div class="level-box"><div class="label">Entry</div><div class="value" id="sigEntry">$--</div></div>
+      <div class="level-box"><div class="label">TP</div><div class="value" id="sigTp">$--</div></div>
+      <div class="level-box"><div class="label">SL</div><div class="value" id="sigSl">$--</div></div>
+      <div class="level-box"><div class="label">Reason</div><div class="value" id="sigReason">--</div></div>
+    </div>
+  </div>
+
+  <div style="font-size:10px;color:#94a3b8;margin-bottom:8px" id="liveDebug">Status: belum jalan</div>
+  <div class="live-actions">
+    <button class="live-btn primary" id="liveStartBtn" onclick="startLiveSignal()">Start Live Signal</button>
+    <button class="live-btn danger" id="liveStopBtn" onclick="stopLiveSignal()">Stop</button>
+    <button class="live-btn" onclick="clearLiveLog()">Clear Log</button>
+    <button class="live-btn" onclick="runSim()">Run Backtest</button>
+  </div>
+
+  <div class="live-log" id="liveLog">
+    <div class="live-log-row"><span>Time</span><span>Signal</span><span>Reason</span><span>Price</span></div>
+  </div>
+</div>
+
+<!-- ADAPTIVE REGIME STRATEGY -->
+<div class="adapt-panel">
+  <div class="adapt-head">
+    <div>
+      <div class="adapt-title">Adaptive Regime Strategy v1</div>
+      <div class="adapt-sub">Strategi hybrid lebih aktif: trend-following, range reversal, dan micro-scalp fallback untuk mengurangi bulan kosong tanpa spam entry.</div>
+    </div>
+    <div class="adapt-badge">Test Mode</div>
+  </div>
+
+  <div class="adapt-grid">
+    <div class="adapt-box">
+      <div class="alabel">Mode</div>
+      <div class="aval">Active</div>
+      <div class="anote">trend + range + scalp</div>
+    </div>
+    <div class="adapt-box">
+      <div class="alabel">Leverage</div>
+      <div class="aval">Auto</div>
+      <div class="anote">2x–10x</div>
+    </div>
+    <div class="adapt-box">
+      <div class="alabel">TP/SL</div>
+      <div class="aval">Dynamic</div>
+      <div class="anote">ATR based</div>
+    </div>
+    <div class="adapt-box">
+      <div class="alabel">Anti Chop</div>
+      <div class="aval">ON</div>
+      <div class="anote">skip low quality</div>
+    </div>
+  </div>
+
+  <div class="adapt-rules">
+    <div class="regime-card regime-trend">
+      <h4>Trend Mode</h4>
+      <p>ADX kuat + EMA trend valid. Entry ikut breakout/pullback. TP lebih jauh, trailing aktif.</p>
+    </div>
+    <div class="regime-card regime-range">
+      <h4>Range Mode</h4>
+      <p>ADX rendah + Bollinger extreme. Entry fade upper/lower band. TP lebih dekat.</p>
+    </div>
+    <div class="regime-card regime-vol">
+      <h4>High Volatility</h4>
+      <p>ATR terlalu tinggi. Leverage otomatis turun dan risk diperkecil.</p>
+    </div>
+    <div class="regime-card regime-skip">
+      <h4>No Trade Zone</h4>
+      <p>Volume lemah, ATR kecil, atau candle chop. Bot skip agar tidak overtrade.</p>
+    </div>
+  </div>
+
+  <div class="adapt-controls">
+    <div class="adapt-control">
+      <label>Strategy mode</label>
+      <select id="strategyMode">
+        <option value="adaptive" selected>Balanced Active</option>
+        <option value="strict">Strict Quality</option>
+        <option value="trend">Trend Only</option>
+        <option value="range">Range Only</option>
+      </select>
+    </div>
+    <div class="adapt-control">
+      <label>Auto leverage</label>
+      <select id="autoLev">
+        <option value="on" selected>ON</option>
+        <option value="off">OFF</option>
+      </select>
+    </div>
+    <div class="adapt-control">
+      <label>Max trades / day</label>
+      <input id="maxTradesDay" type="number" value="22" min="1" max="80">
+    </div>
+    <div class="adapt-control">
+      <label>Daily stop loss</label>
+      <input id="dailyStopR" type="number" value="3" min="1" max="10" step="0.5">
+    </div>
+  </div>
+</div>
+
 <!-- PARAMS -->
 <div class="card">
   <div class="card-title"><i class="fa-solid fa-sliders"></i> Parameter Binance Futures</div>
@@ -200,19 +652,26 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
     </div>
     <div class="param-group">
       <label>Leverage</label>
-      <div class="seg" id="levSeg">
+      <div class="seg" id="levSeg" style="flex-wrap:wrap">
         <button class="sg" onclick="pick('lev',1,this)">1x</button>
+        <button class="sg" onclick="pick('lev',2,this)">2x</button>
         <button class="sg" onclick="pick('lev',3,this)">3x</button>
         <button class="sg on" onclick="pick('lev',5,this)">5x</button>
         <button class="sg" onclick="pick('lev',10,this)">10x</button>
+        <button class="sg" onclick="pick('lev',15,this)">15x</button>
         <button class="sg" onclick="pick('lev',20,this)">20x</button>
+        <button class="sg" onclick="pick('lev',25,this)">25x</button>
+        <button class="sg" onclick="pick('lev',50,this)">50x</button>
+        <button class="sg" onclick="pick('lev',75,this)">75x</button>
+        <button class="sg" onclick="pick('lev',100,this)">100x</button>
+        <button class="sg" onclick="pick('lev',125,this)">125x</button>
       </div>
     </div>
     <div class="param-group">
       <label>Timeframe sinyal</label>
       <div class="seg" id="tfSeg">
-        <button class="sg" onclick="pick('tf','15m',this)">15M</button>
-        <button class="sg on" onclick="pick('tf','1h',this)">1H</button>
+        <button class="sg on" onclick="pick('tf','15m',this)">15M</button>
+        <button class="sg" onclick="pick('tf','1h',this)">1H</button>
         <button class="sg" onclick="pick('tf','4h',this)">4H</button>
         <button class="sg" onclick="pick('tf','1d',this)">1D</button>
       </div>
@@ -231,9 +690,9 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
     </div>
     <div class="param-group" style="align-self:center">
       <div style="font-size:11px;color:var(--green);background:#16a34a0d;padding:6px 10px;border-radius:var(--radius-sm);border:0.5px solid #16a34a33;line-height:1.6">
-        ✓ TP selalu 2× SL<br>
-        ✓ Trailing stop aktif<br>
-        ✓ Entry di candle berikutnya<br>
+        ✓ TP/SL dynamic by regime<br>
+        ✓ Auto leverage by volatility<br>
+        ✓ Anti-chop no trade filter<br>
         ✓ Fee maker/taker Binance real
       </div>
     </div>
@@ -320,14 +779,14 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
 
 <!-- FOOTER -->
 <div class="footer">
-  <strong style="color:var(--text2)">BTC Futures Backtest</strong> — Data: Binance Public API · Strategi: Adaptive Multi-Signal · TP:SL 2:1 · Trailing Stop · Fee real maker/taker<br>
+  <strong style="color:var(--text2)">BTC Futures Backtest</strong> — Data: Binance Public API · Strategi: Adaptive Multi-Signal · Adaptive Regime · Dynamic TP/SL · Auto Leverage · Fee real maker/taker<br>
   ⚠ Hasil backtest tidak menjamin profit di live trading. Selalu gunakan modal yang siap hilang.
 </div>
 </div>
 
 <script>
 // ═══ GLOBALS ═══
-let LEV=5,TF='1h';
+let LEV=5,TF='15m';
 let charts={eq:null,dly:null,mth:null};
 const FM=0.0002,FT=0.0004,FUND=0.0001;
 const TFH={'15m':0.25,'1h':1,'4h':4,'1d':24};
@@ -458,6 +917,140 @@ function atrArr(klines,p=14){const r=new Array(klines.length).fill(0);for(let i=
 function rsiArr(c,p=14){const r=new Array(c.length).fill(50);for(let i=p;i<c.length;i++){let g=0,l=0;for(let j=i-p+1;j<=i;j++){const d=c[j]-c[j-1];if(d>0)g+=d;else l+=Math.abs(d);}r[i]=100-100/(1+g/(l||.001));}return r;}
 function adxCalc(klines,p=14){const n=klines.length,atr=atrArr(klines,p),pDM=new Array(n).fill(0),mDM=new Array(n).fill(0);for(let i=1;i<n;i++){const up=klines[i].h-klines[i-1].h,dn=klines[i-1].l-klines[i].l;pDM[i]=up>dn&&up>0?up:0;mDM[i]=dn>up&&dn>0?dn:0;}const spDM=ema(pDM,p),smDM=ema(mDM,p);const pDI=spDM.map((v,i)=>atr[i]>0?v/atr[i]*100:0),mDI=smDM.map((v,i)=>atr[i]>0?v/atr[i]*100:0);const dx=pDI.map((v,i)=>{const s=v+mDI[i];return s>0?Math.abs(v-mDI[i])/s*100:0;});return{adx:ema(dx,p),pDI,mDI};}
 
+
+// ═══ ADAPTIVE REGIME STRATEGY ENGINE ═══
+function percentile(arr, p){
+  if(!arr.length) return 0;
+  const s=[...arr].sort((a,b)=>a-b);
+  const idx=Math.max(0,Math.min(s.length-1,Math.floor((s.length-1)*p)));
+  return s[idx];
+}
+function bodyPct(k){
+  const range=Math.max(1e-9,k.h-k.l);
+  return Math.abs(k.c-k.o)/range;
+}
+function upperWickPct(k){
+  const range=Math.max(1e-9,k.h-k.l);
+  return (k.h-Math.max(k.o,k.c))/range;
+}
+function lowerWickPct(k){
+  const range=Math.max(1e-9,k.h-k.l);
+  return (Math.min(k.o,k.c)-k.l)/range;
+}
+function genAdaptiveSignals(klines, slMult){
+  const mode=document.getElementById('strategyMode')?.value || 'adaptive';
+  const maxTradesDay=parseInt(document.getElementById('maxTradesDay')?.value || '22',10);
+  const c=klines.map(k=>k.c), h=klines.map(k=>k.h), l=klines.map(k=>k.l), v=klines.map(k=>k.v);
+  const atr=atrArr(klines,14), atrSma=sma(atr,50);
+  const {adx,pDI,mDI}=adxCalc(klines,14);
+  const e20=ema(c,20), e50=ema(c,50), e200=ema(c,200);
+  const rsi=rsiArr(c,14);
+  const volE=ema(v,20);
+  const mid=sma(c,20), sd=stdev(c,20);
+  const upper=mid.map((m,i)=>m+2*sd[i]);
+  const lower=mid.map((m,i)=>m-2*sd[i]);
+  const bbw=upper.map((u,i)=>mid[i]>0?(u-lower[i])/mid[i]:0);
+  const bwMed=percentile(bbw.slice(50),0.5) || 0.04;
+
+  const sigs=[];
+  const tradesByDay={};
+  const minIdx=Math.min(240,Math.floor(klines.length*0.30));
+  for(let i=minIdx;i<klines.length-1;i++){
+    const k=klines[i], prev=klines[i-1];
+    const day=new Date(klines[i+1].t).toLocaleDateString();
+    if(!tradesByDay[day]) tradesByDay[day]=0;
+    if(tradesByDay[day]>=maxTradesDay) continue;
+
+    const a=atr[i], aS=atrSma[i]||a;
+    const price=c[i], nextOpen=klines[i+1].o;
+    const adxV=adx[i]||0;
+    const volOK=v[i] > volE[i]*0.85;
+    const volSpike=v[i] > volE[i]*1.15;
+    const rangePct=a/price;
+    const highVol=a > aS*1.55 || rangePct>0.018;
+    const lowVol=a < aS*0.55 || rangePct<0.0025;
+    const strictMode=mode==='strict';
+    const chop=(adxV<11 && bbw[i]<bwMed*0.55) || (strictMode && bodyPct(k)<0.18);
+    if((strictMode && lowVol) || chop) continue;
+
+    const bullTrend=price>e200[i] && e50[i]>e200[i] && pDI[i]>mDI[i];
+    const bearTrend=price<e200[i] && e50[i]<e200[i] && mDI[i]>pDI[i];
+    const trending=adxV>18;
+    const ranging=adxV<24 && bbw[i] <= bwMed*1.65;
+
+    let sig='WAIT', label='', regime='', score=0, tpR=1.5, slM=slMult, levHint=LEV;
+
+    // Trend continuation: lebih selektif, bukan EMA cross telat
+    const brokeHigh=k.c>Math.max(...h.slice(Math.max(0,i-8),i));
+    const brokeLow=k.c<Math.min(...l.slice(Math.max(0,i-8),i));
+    const pullBuy=prev.l<=e20[i-1] && k.c>e20[i] && k.c>k.o;
+    const pullSell=prev.h>=e20[i-1] && k.c<e20[i] && k.c<k.o;
+
+    if(mode!=='range' && trending){
+      if(bullTrend && (pullBuy || brokeHigh) && rsi[i]>45 && rsi[i]<76 && (volOK || !strictMode)){
+        sig='BUY'; label=pullBuy?'Trend Pullback↑':'Trend Breakout↑'; regime='TREND'; score=7; tpR=2.0; slM=1.15; levHint=10;
+      }else if(bearTrend && (pullSell || brokeLow) && rsi[i]<55 && rsi[i]>24 && (volOK || !strictMode)){
+        sig='SELL'; label=pullSell?'Trend Pullback↓':'Trend Breakout↓'; regime='TREND'; score=7; tpR=2.0; slM=1.15; levHint=10;
+      }
+    }
+
+    // Range mean reversion: cari rejection ekstrem
+    const buyReject=k.l<lower[i]*1.002 && k.c>lower[i] && lowerWickPct(k)>0.24 && rsi[i]<43;
+    const sellReject=k.h>upper[i]*0.998 && k.c<upper[i] && upperWickPct(k)>0.24 && rsi[i]>57;
+    if(sig==='WAIT' && mode!=='trend' && ranging){
+      if(buyReject && (volOK || !strictMode)){
+        sig='BUY'; label='Range Reversal↑'; regime='RANGE'; score=6; tpR=1.15; slM=1.0; levHint=3;
+      }else if(sellReject && (volOK || !strictMode)){
+        sig='SELL'; label='Range Reversal↓'; regime='RANGE'; score=6; tpR=1.15; slM=1.0; levHint=3;
+      }
+    }
+
+    // Micro scalp fallback: mengisi bulan yang terlalu sepi, tetap pakai filter arah EMA200
+    if(sig==='WAIT' && mode==='adaptive' && !highVol && adxV>14 && bodyPct(k)>0.28 && v[i] > volE[i]*0.75){
+      const bounceBuy=price>e200[i] && k.c>k.o && k.l<=e20[i] && rsi[i]>42 && rsi[i]<68;
+      const bounceSell=price<e200[i] && k.c<k.o && k.h>=e20[i] && rsi[i]<58 && rsi[i]>32;
+      if(bounceBuy){
+        sig='BUY'; label='Active Scalp↑'; regime='SCALP'; score=5; tpR=1.05; slM=0.95; levHint=4;
+      }else if(bounceSell){
+        sig='SELL'; label='Active Scalp↓'; regime='SCALP'; score=5; tpR=1.05; slM=0.95; levHint=4;
+      }
+    }
+
+    // High volatility: hanya ikut momentum kuat dan size/leverage rendah
+    if(sig==='WAIT' && highVol && adxV>24 && volSpike && bodyPct(k)>0.45){
+      if(bullTrend && k.c>k.o && rsi[i]>55 && rsi[i]<78){
+        sig='BUY'; label='Vol Momentum↑'; regime='HIGH VOL'; score=6; tpR=1.35; slM=1.45; levHint=2;
+      }else if(bearTrend && k.c<k.o && rsi[i]<45 && rsi[i]>22){
+        sig='SELL'; label='Vol Momentum↓'; regime='HIGH VOL'; score=6; tpR=1.35; slM=1.45; levHint=2;
+      }
+    }
+
+    if(sig==='WAIT') continue;
+
+    const slDist=a*slM;
+    const tpDist=slDist*tpR;
+    const ep=nextOpen;
+
+    sigs.push({
+      i:i+1,
+      sig,
+      price:ep,
+      date:new Date(klines[i+1].t),
+      atr:a,
+      slDist,
+      tpDist,
+      tpP:sig==='BUY'?ep+tpDist:ep-tpDist,
+      slP:sig==='BUY'?ep-slDist:ep+slDist,
+      label:`${label} · ${regime}`,
+      score,
+      regime,
+      levHint
+    });
+    tradesByDay[day]++;
+  }
+  return sigs;
+}
+
 // ═══ SIGNAL ENGINE ═══
 function genSignals(klines,slMult){
   const c=klines.map(k=>k.c),h=klines.map(k=>k.h),l=klines.map(k=>k.l),v=klines.map(k=>k.v);
@@ -512,11 +1105,13 @@ function genSignals(klines,slMult){
 
 // ═══ SIMULATE ═══
 function simulate(klines,sigs,cap,riskPct,lev){
+  const autoLevOn=(document.getElementById('autoLev')?.value||'on')==='on';
+  const dailyStopR=parseFloat(document.getElementById('dailyStopR')?.value||'3');
   let eq=cap,peak=cap,maxDD=0,wins=0,losses=0,trails=0,liqs=0,totalFee=0,gp=0,gl=0;
   const trades=[],eqC=[cap],eqL=['Start'];
-  let inT=false,entry=0,eDir='',stake=0,eDate=null,eI=0;
+  let inT=false,entry=0,eDir='',stake=0,eDate=null,eI=0,currentLev=lev;
   let tpP=0,slP=0,slDist=0,eLabel='',trailActive=false,trailSL=0;
-  const liqThr=0.9/lev,hpc=TFH[TF]||1;
+  let liqThr=0.9/lev; const hpc=TFH[TF]||1;
   let dailyLoss=0,lastDay='';
   for(let si=0;si<sigs.length;si++){
     const sg=sigs[si],{sig,price,date,i,tpP:tp,slP:sl,label}=sg;
@@ -524,7 +1119,7 @@ function simulate(klines,sigs,cap,riskPct,lev){
     if(dk!==lastDay){dailyLoss=0;lastDay=dk;}
     if(inT){
       const raw=eDir==='BUY'?(price-entry)/entry:(entry-price)/entry;
-      const levP=raw*lev,hrs=(i-eI)*hpc;
+      const levP=raw*currentLev,hrs=(i-eI)*hpc;
       const fCost=stake*FUND*Math.floor(Math.max(0,hrs)/8);
       const moved=eDir==='BUY'?price-entry:entry-price;
       if(!trailActive&&moved>=slDist){trailActive=true;trailSL=eDir==='BUY'?entry+slDist*.1:entry-slDist*.1;}
@@ -535,26 +1130,28 @@ function simulate(klines,sigs,cap,riskPct,lev){
       const hitLiq=raw<=-liqThr;
       let done=false,reason='',netPnl=0;
       if(hitLiq){done=true;reason='LIQ';netPnl=-stake;liqs++;}
-      else if(hitTP){done=true;reason='TP';const pct=eDir==='BUY'?(tpP-entry)/entry:(entry-tpP)/entry;netPnl=stake*pct*lev-fCost-stake*lev*FM;}
-      else if(hitSL){done=true;reason=trailActive?'TRAIL':'SL';const ep2=aSL;const pct=eDir==='BUY'?(ep2-entry)/entry:(entry-ep2)/entry;netPnl=stake*pct*lev-fCost-stake*lev*FT;if(trailActive)trails++;}
-      else if(si===sigs.length-1){done=true;reason='END';netPnl=stake*levP-fCost-stake*lev*FT;}
+      else if(hitTP){done=true;reason='TP';const pct=eDir==='BUY'?(tpP-entry)/entry:(entry-tpP)/entry;netPnl=stake*pct*currentLev-fCost-stake*currentLev*FM;}
+      else if(hitSL){done=true;reason=trailActive?'TRAIL':'SL';const ep2=aSL;const pct=eDir==='BUY'?(ep2-entry)/entry:(entry-ep2)/entry;netPnl=stake*pct*currentLev-fCost-stake*currentLev*FT;if(trailActive)trails++;}
+      else if(si===sigs.length-1){done=true;reason='END';netPnl=stake*levP-fCost-stake*currentLev*FT;}
       if(!done)continue;
-      totalFee+=fCost+(reason==='TP'?stake*lev*FM:stake*lev*FT);
+      totalFee+=fCost+(reason==='TP'?stake*currentLev*FM:stake*currentLev*FT);
       eq=Math.max(0,eq+netPnl);if(eq>peak)peak=eq;
       const dd=(peak-eq)/peak*100;if(dd>maxDD)maxDD=dd;
       if(netPnl>0){wins++;gp+=netPnl;}else{losses++;gl+=Math.abs(netPnl);}
       if(netPnl<0)dailyLoss+=Math.abs(netPnl);
       const fmtO=hpc<1?{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}:hpc<=4?{month:'short',day:'numeric',hour:'2-digit'}:{month:'short',day:'numeric'};
-      trades.push({idx:trades.length+1,sig:eDir,entry,exit:price,tpP,slP:sl,pnl:parseFloat(netPnl.toFixed(4)),equity:parseFloat(eq.toFixed(4)),entryDate:eDate,exitDate:date,reason,label:eLabel});
+      trades.push({idx:trades.length+1,sig:eDir,entry,exit:price,tpP,slP:sl,pnl:parseFloat(netPnl.toFixed(4)),equity:parseFloat(eq.toFixed(4)),entryDate:eDate,exitDate:date,reason,label:eLabel,lev:currentLev,regime:(sigs[Math.max(0,si-1)]?.regime||'')});
       eqC.push(parseFloat(eq.toFixed(4)));eqL.push(date.toLocaleString('id-ID',fmtO));
       inT=false;trailActive=false;if(eq<0.01)break;
     }
-    if(dailyLoss>=eq*riskPct*3)continue;
+    if(dailyLoss>=eq*riskPct*dailyStopR)continue;
     if(!inT&&sig!=='WAIT'&&eq>0.01){
+      currentLev=autoLevOn?(sg.levHint||lev):lev;
+      liqThr=0.9/currentLev;
       inT=true;entry=price;eDir=sig;
       const slPct=sg.slDist/price;
-      stake=Math.min((eq*riskPct)/(slPct*lev+FT*lev*2),eq*.95);
-      const enFee=stake*lev*FT;totalFee+=enFee;eq-=enFee;
+      stake=Math.min((eq*riskPct)/(slPct*currentLev+FT*currentLev*2),eq*.95);
+      const enFee=stake*currentLev*FT;totalFee+=enFee;eq-=enFee;
       tpP=sg.tpP;slP=sg.slP;slDist=sg.slDist;eDate=date;eI=i;eLabel=label;trailActive=false;
     }
   }
@@ -652,7 +1249,7 @@ async function runSim(){
 
   setSt(`${klines.length} candle dimuat — generate sinyal...`,38);
   await new Promise(r=>setTimeout(r,15));
-  const sigs=genSignals(klines,slMult);
+  const sigs=genAdaptiveSignals(klines,slMult);
 
   setSt(`${sigs.length} sinyal → simulasi ${LEV}x leverage...`,62);
   await new Promise(r=>setTimeout(r,15));
@@ -710,8 +1307,238 @@ async function runSim(){
   btn.disabled=false;
 }
 
+
+// ═══ LIVE SIGNAL MODE ═══
+let liveWs=null;
+let liveKlines=[];
+let liveBusy=false;
+let liveRunning=false;
+
+function liveFmt(v){return '$'+Number(v).toLocaleString('en-US',{maximumFractionDigits:2});}
+function addLiveLog(type, reason, price){
+  const el=document.getElementById('liveLog');
+  const now=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  const row=document.createElement('div');
+  row.className='live-log-row';
+  const cls=type==='BUY'?'buy':type==='SELL'?'sell':'wait';
+  row.innerHTML=`<span>${now}</span><span class="${cls}">${type}</span><span>${reason}</span><span>${liveFmt(price)}</span>`;
+  if(el.children.length>40) el.removeChild(el.lastChild);
+  el.insertBefore(row, el.children[1] || null);
+}
+function clearLiveLog(){
+  document.getElementById('liveLog').innerHTML='<div class="live-log-row"><span>Time</span><span>Signal</span><span>Reason</span><span>Price</span></div>';
+}
+function setLiveButtons(running){
+  const startBtn=document.getElementById('liveStartBtn');
+  const stopBtn=document.getElementById('liveStopBtn');
+  if(startBtn) startBtn.disabled=!!running;
+  if(stopBtn) stopBtn.disabled=!running;
+}
+function setLiveStatus(on, txt){
+  const s=document.getElementById('liveStatus');
+  s.classList.toggle('on', !!on);
+  document.getElementById('liveStatusText').textContent=txt;
+  setLiveButtons(!!on);
+}
+async function preloadLiveCandles(){
+  const tf = TF || '15m';
+  const urls=[
+    `https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=${tf}&limit=500`,
+    `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${tf}&limit=500`
+  ];
+  let lastErr=null;
+  for(const url of urls){
+    try{
+      const r=await fetch(url);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const d=await r.json();
+      if(!Array.isArray(d) || d.length<50) throw new Error('data kurang');
+      liveKlines=d.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));
+      return;
+    }catch(e){lastErr=e;}
+  }
+  throw lastErr || new Error('gagal ambil candle awal');
+}
+function evalLiveSignal(){
+  if(liveKlines.length<260) return null;
+  const slMult=parseFloat(document.getElementById('slM').value);
+  const sigs=genAdaptiveSignals(liveKlines, slMult);
+  if(!sigs.length) return null;
+  const last=sigs[sigs.length-1];
+  const lastClosed=liveKlines[liveKlines.length-1];
+  const near=Math.abs(last.i-(liveKlines.length-1))<=1;
+  return near ? last : null;
+}
+function updateLiveUIFromSignal(sig, price){
+  const action=document.getElementById('signalAction');
+  const score=document.getElementById('signalScore');
+
+  if(!sig){
+    action.textContent='WAIT';
+    action.className='signal-action wait';
+    score.textContent='Score --/10';
+    document.getElementById('sigEntry').textContent=liveFmt(price);
+    document.getElementById('sigTp').textContent='$--';
+    document.getElementById('sigSl').textContent='$--';
+    document.getElementById('sigReason').textContent='No valid setup';
+    document.getElementById('liveRegime').textContent='WAIT';
+    document.getElementById('liveLev').textContent='--';
+    return;
+  }
+
+  action.textContent=sig.sig;
+  action.className='signal-action '+(sig.sig==='BUY'?'buy':'sell');
+  score.textContent='Score '+(sig.score||0)+'/10';
+  document.getElementById('sigEntry').textContent=liveFmt(sig.price);
+  document.getElementById('sigTp').textContent=liveFmt(sig.tpP);
+  document.getElementById('sigSl').textContent=liveFmt(sig.slP);
+  document.getElementById('sigReason').textContent=sig.label || sig.regime || '--';
+  document.getElementById('liveRegime').textContent=sig.regime || '--';
+  document.getElementById('liveLev').textContent=(sig.levHint||LEV)+'x';
+  addLiveLog(sig.sig, sig.label || sig.regime || 'Signal', sig.price);
+}
+
+let liveSimTimer=null;
+
+function setLiveDebug(txt){
+  const el=document.getElementById('liveDebug');
+  if(el) el.textContent='Status: '+txt;
+}
+
+function startDemoLiveSignal(){
+  // Fallback kalau WebSocket Binance diblokir browser/network.
+  if(!liveKlines.length){
+    const now=Date.now();
+    liveKlines=genSim(500,0.25,now-500*15*60*1000,now);
+  }
+  setLiveStatus(true,'DEMO LIVE');
+  setLiveDebug('mode demo aktif, WebSocket Binance kemungkinan diblokir');
+  liveRunning=true;
+  if(liveSimTimer) clearInterval(liveSimTimer);
+  liveSimTimer=setInterval(()=>{
+    if(!liveRunning) return;
+    const last=liveKlines[liveKlines.length-1];
+    const t=last.t+15*60*1000;
+    const drift=(Math.random()-0.49)*last.c*0.004;
+    const close=Math.max(1000,last.c+drift);
+    const open=last.c;
+    const high=Math.max(open,close)+Math.random()*last.c*0.002;
+    const low=Math.min(open,close)-Math.random()*last.c*0.002;
+    const candle={t,o:open,h:high,l:low,c:close,v:50+Math.random()*400};
+    liveKlines.push(candle);
+    if(liveKlines.length>600) liveKlines.shift();
+
+    document.getElementById('livePrice').textContent=liveFmt(candle.c);
+    document.getElementById('liveCandle').textContent='DEMO CLOSE';
+
+    const sig=evalLiveSignal();
+    updateLiveUIFromSignal(sig,candle.c);
+  },3000);
+}
+
+async function startLiveSignal(){
+  if(liveBusy || liveRunning) return;
+  liveBusy=true;
+  try{
+    setLiveStatus(false,'LOADING');
+    setLiveDebug('mengambil candle awal...');
+    liveRunning=true;
+    setLiveButtons(true);
+    await preloadLiveCandles();
+    setLiveDebug('candle awal berhasil, menyambungkan WebSocket...');
+    const tf=TF || '15m';
+    const streamTf=tf.toLowerCase();
+    const wsUrls=[
+      `wss://fstream.binance.com/ws/btcusdt@kline_${streamTf}`,
+      `wss://stream.binance.com:9443/ws/btcusdt@kline_${streamTf}`
+    ];
+
+    if(liveWs) liveWs.close();
+    liveWs=new WebSocket(wsUrls[0]);
+
+    let opened=false;
+    const fallbackTimer=setTimeout(()=>{
+      if(opened || !liveRunning) return;
+      try{liveWs.close();}catch(e){}
+      setLiveDebug('futures WS gagal, coba spot WS...');
+      liveWs=new WebSocket(wsUrls[1]);
+      attachLiveHandlers(liveWs);
+      setTimeout(()=>{
+        if(!opened && liveRunning) startDemoLiveSignal();
+      },5000);
+    },5000);
+
+    function attachLiveHandlers(ws){
+      ws.onopen=()=>{
+        opened=true;
+        clearTimeout(fallbackTimer);
+        if(liveRunning){
+          setLiveStatus(true,'LIVE');
+          setLiveDebug('WebSocket tersambung, menunggu candle close...');
+        }
+      };
+      ws.onclose=()=>{
+        if(liveRunning && !opened){
+          setLiveDebug('WebSocket close sebelum tersambung');
+        }else if(!liveRunning){
+          setLiveStatus(false,'STOPPED');
+        }else{
+          setLiveStatus(false,'OFFLINE');
+        }
+      };
+      ws.onerror=()=>{
+        setLiveDebug('WebSocket error, akan coba fallback');
+      };
+      ws.onmessage=(ev)=>{
+        if(!liveRunning) return;
+        const msg=JSON.parse(ev.data);
+        const k=msg.k;
+        const candle={t:+k.t,o:+k.o,h:+k.h,l:+k.l,c:+k.c,v:+k.v};
+        document.getElementById('livePrice').textContent=liveFmt(candle.c);
+        document.getElementById('liveCandle').textContent=k.x?'CLOSED':'LIVE';
+
+        const last=liveKlines[liveKlines.length-1];
+        if(last && last.t===candle.t) liveKlines[liveKlines.length-1]=candle;
+        else liveKlines.push(candle);
+        if(liveKlines.length>600) liveKlines.shift();
+
+        if(k.x){
+          const sig=evalLiveSignal();
+          updateLiveUIFromSignal(sig, candle.c);
+        }
+      };
+    }
+    attachLiveHandlers(liveWs);
+  }catch(e){
+    setLiveStatus(false,'FALLBACK');
+    setLiveDebug('error: '+e.message+' → masuk demo live');
+    startDemoLiveSignal();
+  }finally{
+    liveBusy=false;
+  }
+}
+function stopLiveSignal(){
+  liveRunning=false;
+  liveBusy=false;
+  if(liveSimTimer){clearInterval(liveSimTimer);liveSimTimer=null;}
+  if(liveWs){
+    try{
+      liveWs.onopen=null;
+      liveWs.onmessage=null;
+      liveWs.onerror=null;
+      liveWs.onclose=null;
+      liveWs.close(1000,'manual stop');
+    }catch(e){}
+    liveWs=null;
+  }
+  setLiveStatus(false,'STOPPED');
+  document.getElementById('liveCandle').textContent='STOP';
+  setLiveDebug('berhenti');
+}
+
 // INIT
 initDates();
+setLiveButtons(false);
 </script>
 </body>
 </html>
