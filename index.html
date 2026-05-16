@@ -3,11 +3,144 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BTC Futures Backtest — Adaptive Regime Strategy</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<title>Future Terminal — Trade Future + Poly</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
+:root {
+  --bg:#080d14;
+  --card:#111827;
+  --card2:#0f172a;
+  --border:#26354d;
+  --border2:#334155;
+  --text:#f8fafc;
+  --muted:#94a3b8;
+  --muted2:#64748b;
+  --green:#16a34a;
+  --green2:#4ade80;
+  --red:#dc2626;
+  --red2:#f87171;
+  --blue:#2563eb;
+  --yellow:#f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;min-height:100vh}
+.shell{max-width:1180px;margin:auto;padding:18px 14px 60px}
+.header{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #1f2937}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:1000;font-size:20px}
+h1{font-size:21px}
+.sub{font-size:12px;color:var(--muted);margin-top:3px}
+.pill{font-size:11px;font-weight:900;color:#4ade80;border:1px solid #16a34a66;background:#16a34a14;border-radius:999px;padding:7px 11px;white-space:nowrap}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tab{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:14px 16px;cursor:pointer;color:#cbd5e1;transition:.15s}
+.tab.active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#3b82f6;color:white}
+.tab b{display:block;font-size:16px;margin-bottom:4px}
+.tab span{font-size:11px;opacity:.78}
+.section{display:none}
+.section.active{display:block}
+.trade-frame-card{background:#0f0f0f;border:1px solid var(--border);border-radius:16px;overflow:hidden}
+#tradeFrame{width:100%;border:0;display:block;background:#0f0f0f;min-height:1800px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:900;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.metric{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px}
+.metric small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:6px}
+.metric b{font-size:20px;font-weight:1000}
+.metric span{display:block;color:var(--muted2);font-size:10px;margin-top:4px}
+.good{color:var(--green2)!important}
+.bad{color:var(--red2)!important}
+.yellow{color:#fbbf24!important}
+.blue{color:#60a5fa!important}
+.controls{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px}
+input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:white}
+button{cursor:pointer;font-weight:850;background:#2563eb;border-color:#2563eb}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns button{width:auto}
+.danger{background:#7f1d1d;border-color:#991b1b}
+.green{background:#166534;border-color:#15803d}
+.signal{background:linear-gradient(180deg,#0f172a,#0b1120);border:1px solid #334155;border-radius:14px;padding:15px}
+.signal-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
+.action{font-size:30px;font-weight:1000}
+.score{background:#111827;border:1px solid #334155;border-radius:10px;padding:8px 12px;font-weight:900;color:#cbd5e1}
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.level{background:#111827;border:1px solid #334155;border-radius:10px;padding:10px}
+.level small{color:var(--muted);font-size:9px;text-transform:uppercase}
+.level b{display:block;margin-top:5px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chartbox{height:310px;background:#0b0f14;border:1px solid var(--border);border-radius:12px;padding:10px}
+.table{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#0b1120}
+.row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #1f2a3d;font-size:11px;align-items:center}
+.row:last-child{border-bottom:none}
+.head{background:#0f172a;color:var(--muted);font-weight:900;text-transform:uppercase;font-size:10px}
+.poly-row{grid-template-columns:1.3fr 58px 58px 75px 90px 70px 75px 60px}
+.call-row{grid-template-columns:70px 80px 1.2fr 75px 75px 75px 70px 80px}
+.hist-row{grid-template-columns:80px 80px 1.2fr 75px 75px 75px 80px}
+.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}
+.open{background:#2563eb22;color:#93c5fd;border:1px solid #2563eb66}
+.win{background:#16a34a22;color:#4ade80;border:1px solid #16a34a66}
+.loss{background:#dc262622;color:#f87171;border:1px solid #dc262666}
+.wait{background:#d9770622;color:#fbbf24;border:1px solid #d9770666}
+.note{font-size:10px;color:var(--muted2);line-height:1.6;margin-top:10px}
+.market{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
+.market-top{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}
+.tag{font-size:9px;color:#93c5fd;background:#2563eb22;border:1px solid #2563eb66;padding:4px 8px;border-radius:999px}
+.probs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.prob{background:#111827;border:1px solid #334155;border-radius:10px;padding:10px}
+.prob small{color:var(--muted);font-size:9px}
+.prob b{display:block;font-size:18px;margin-top:3px}
+.bar{height:6px;background:#1f2937;border-radius:999px;overflow:hidden;margin-top:7px}
+.yes{height:100%;background:var(--green)}
+.no{height:100%;background:var(--red)}
+.live-status{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:900;color:#4ade80;background:#16a34a14;border:1px solid #16a34a66;border-radius:999px;padding:5px 10px}
+@media(max-width:900px){
+  .grid2,.grid4,.grid5,.controls,.levels{grid-template-columns:1fr 1fr}
+  .poly-row,.call-row,.hist-row{grid-template-columns:70px 1fr 70px 70px}
+  .poly-row span:nth-child(n+5),.call-row span:nth-child(n+5),.hist-row span:nth-child(n+5){display:none}
+}
+@media(max-width:560px){
+  .tabs,.grid2,.grid4,.grid5,.controls,.levels,.probs{grid-template-columns:1fr}
+  .header{align-items:flex-start;flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">F</div>
+      <div>
+        <h1>Future Terminal</h1>
+        <div class="sub">Full gabungan: Trade Future lengkap + Poly AI Calls</div>
+      </div>
+    </div>
+    <div class="pill">DEPLOY READY</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('trade',this)">
+      <b>Trade Future</b>
+      <span>Fitur futures lengkap yang sudah kita bangun</span>
+    </div>
+    <div class="tab" onclick="showTab('poly',this)">
+      <b>Poly</b>
+      <span>Live AI call, active call, history, Poly backtest</span>
+    </div>
+  </div>
+
+  <section id="trade" class="section active">
+    <div class="trade-frame-card">
+      <iframe id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;id&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+&lt;title&gt;BTC Futures Backtest — Adaptive Regime Strategy&lt;/title&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css&quot;&gt;
+&lt;script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js&quot;&gt;&lt;/script&gt;
+&lt;style&gt;
 :root {
   --bg: #0f0f0f;
   --bg2: #1a1a1a;
@@ -25,7 +158,7 @@
   --radius-sm: 6px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; min-height: 100vh; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, sans-serif; font-size: 13px; min-height: 100vh; }
 .container { max-width: 900px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
 
 /* HEADER */
@@ -508,469 +641,469 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
 .live2-log-row:last-child{border-bottom:none}.live2-log-row .buy{color:#4ade80;font-weight:900}.live2-log-row .sell{color:#f87171;font-weight:900}.live2-log-row .tp{color:#4ade80;font-weight:900}.live2-log-row .sl{color:#f87171;font-weight:900}
 @media(max-width:850px){.live2-controls,.live2-grid{grid-template-columns:repeat(2,1fr)}.live2-levels{grid-template-columns:repeat(2,1fr)}.live2-chart-wrap{height:390px}.live2-log-row{grid-template-columns:60px 54px 1fr 70px}.live2-log-row span:last-child{display:none}}
 
-</style>
-</head>
-<body>
-<div class="container">
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;container&quot;&gt;
 
-<!-- HEADER -->
-<div class="header">
-  <div class="brand">
-    <div class="brand-icon">₿</div>
-    <div>
-      <div class="brand-name">BTC Futures Backtest</div>
-      <div class="brand-sub">Binance Futures · Adaptive Regime · Dynamic TP/SL</div>
-    </div>
-  </div>
-  <div class="live-badge"><div class="live-dot"></div>Binance API Live</div>
-</div>
+&lt;!-- HEADER --&gt;
+&lt;div class=&quot;header&quot;&gt;
+  &lt;div class=&quot;brand&quot;&gt;
+    &lt;div class=&quot;brand-icon&quot;&gt;₿&lt;/div&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;brand-name&quot;&gt;BTC Futures Backtest&lt;/div&gt;
+      &lt;div class=&quot;brand-sub&quot;&gt;Binance Futures · Adaptive Regime · Dynamic TP/SL&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;live-badge&quot;&gt;&lt;div class=&quot;live-dot&quot;&gt;&lt;/div&gt;Binance API Live&lt;/div&gt;
+&lt;/div&gt;
 
-<!-- DATE RANGE PICKER -->
-<div class="range-box">
-  <div class="range-header"><i class="fa-regular fa-calendar-range"></i> Pilih periode backtest — tanggal pasti, hasil selalu konsisten</div>
+&lt;!-- DATE RANGE PICKER --&gt;
+&lt;div class=&quot;range-box&quot;&gt;
+  &lt;div class=&quot;range-header&quot;&gt;&lt;i class=&quot;fa-regular fa-calendar-range&quot;&gt;&lt;/i&gt; Pilih periode backtest — tanggal pasti, hasil selalu konsisten&lt;/div&gt;
 
-  <div class="quicksel-label">Pilih bulan:</div>
-  <div class="quicksel" id="monthBtns"></div>
+  &lt;div class=&quot;quicksel-label&quot;&gt;Pilih bulan:&lt;/div&gt;
+  &lt;div class=&quot;quicksel&quot; id=&quot;monthBtns&quot;&gt;&lt;/div&gt;
 
-  <div class="quicksel-label">Pilih tahun:</div>
-  <div class="quicksel" id="yearBtns"></div>
+  &lt;div class=&quot;quicksel-label&quot;&gt;Pilih tahun:&lt;/div&gt;
+  &lt;div class=&quot;quicksel&quot; id=&quot;yearBtns&quot;&gt;&lt;/div&gt;
 
-  <div class="date-row">
-    <div class="date-group">
-      <label>Dari tanggal</label>
-      <div class="date-selects">
-        <select id="fromDay" style="width:58px"></select>
-        <select id="fromMonth" style="width:110px"></select>
-        <select id="fromYear" style="width:72px"></select>
-      </div>
-    </div>
-    <div class="date-group">
-      <label>Sampai tanggal</label>
-      <div class="date-selects">
-        <select id="toDay" style="width:58px"></select>
-        <select id="toMonth" style="width:110px"></select>
-        <select id="toYear" style="width:72px"></select>
-      </div>
-    </div>
-  </div>
+  &lt;div class=&quot;date-row&quot;&gt;
+    &lt;div class=&quot;date-group&quot;&gt;
+      &lt;label&gt;Dari tanggal&lt;/label&gt;
+      &lt;div class=&quot;date-selects&quot;&gt;
+        &lt;select id=&quot;fromDay&quot; style=&quot;width:58px&quot;&gt;&lt;/select&gt;
+        &lt;select id=&quot;fromMonth&quot; style=&quot;width:110px&quot;&gt;&lt;/select&gt;
+        &lt;select id=&quot;fromYear&quot; style=&quot;width:72px&quot;&gt;&lt;/select&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;date-group&quot;&gt;
+      &lt;label&gt;Sampai tanggal&lt;/label&gt;
+      &lt;div class=&quot;date-selects&quot;&gt;
+        &lt;select id=&quot;toDay&quot; style=&quot;width:58px&quot;&gt;&lt;/select&gt;
+        &lt;select id=&quot;toMonth&quot; style=&quot;width:110px&quot;&gt;&lt;/select&gt;
+        &lt;select id=&quot;toYear&quot; style=&quot;width:72px&quot;&gt;&lt;/select&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
 
-  <div class="date-preview" id="datePreview">Memuat...</div>
+  &lt;div class=&quot;date-preview&quot; id=&quot;datePreview&quot;&gt;Memuat...&lt;/div&gt;
 
-  <div class="nav-btns">
-    <button class="nb" onclick="shiftPeriod(-1,'month')">◀ Bulan sebelumnya</button>
-    <button class="nb" onclick="shiftPeriod(1,'month')">Bulan berikutnya ▶</button>
-    <button class="nb" onclick="shiftPeriod(-1,'year')">◀ Tahun sebelumnya</button>
-    <button class="nb" onclick="shiftPeriod(1,'year')">Tahun berikutnya ▶</button>
-    <button class="nb" onclick="setThisMonth()">Bulan ini</button>
-    <button class="nb" onclick="setThisYear()">Tahun ini</button>
-    <button class="nb" onclick="setLastN(7)">7 hari terakhir</button>
-    <button class="nb" onclick="setLastN(30)">30 hari terakhir</button>
-    <button class="nb" onclick="setLastN(90)">90 hari terakhir</button>
-  </div>
-</div>
+  &lt;div class=&quot;nav-btns&quot;&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;shiftPeriod(-1,&#x27;month&#x27;)&quot;&gt;◀ Bulan sebelumnya&lt;/button&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;shiftPeriod(1,&#x27;month&#x27;)&quot;&gt;Bulan berikutnya ▶&lt;/button&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;shiftPeriod(-1,&#x27;year&#x27;)&quot;&gt;◀ Tahun sebelumnya&lt;/button&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;shiftPeriod(1,&#x27;year&#x27;)&quot;&gt;Tahun berikutnya ▶&lt;/button&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;setThisMonth()&quot;&gt;Bulan ini&lt;/button&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;setThisYear()&quot;&gt;Tahun ini&lt;/button&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;setLastN(7)&quot;&gt;7 hari terakhir&lt;/button&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;setLastN(30)&quot;&gt;30 hari terakhir&lt;/button&gt;
+    &lt;button class=&quot;nb&quot; onclick=&quot;setLastN(90)&quot;&gt;90 hari terakhir&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
 
 
 
-<!-- LIVE SIGNAL V2 -->
-<div class="live2-panel">
-  <div class="live2-head">
-    <div>
-      <div class="live2-title">Live Signal v2 — Monthly Consistency Strategy</div>
-      <div class="live2-sub">Sinyal realtime memakai strategi yang sama dengan backtest. Sinyal hanya muncul saat candle close, tidak flip random, dan ada paper balance untuk simulasi saldo live.</div>
-    </div>
-    <div class="live2-status" id="live2Status"><span class="live2-dot"></span><span id="live2StatusText">OFFLINE</span></div>
-  </div>
+&lt;!-- LIVE SIGNAL V2 --&gt;
+&lt;div class=&quot;live2-panel&quot;&gt;
+  &lt;div class=&quot;live2-head&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;live2-title&quot;&gt;Live Signal v2 — Monthly Consistency Strategy&lt;/div&gt;
+      &lt;div class=&quot;live2-sub&quot;&gt;Sinyal realtime memakai strategi yang sama dengan backtest. Sinyal hanya muncul saat candle close, tidak flip random, dan ada paper balance untuk simulasi saldo live.&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;live2-status&quot; id=&quot;live2Status&quot;&gt;&lt;span class=&quot;live2-dot&quot;&gt;&lt;/span&gt;&lt;span id=&quot;live2StatusText&quot;&gt;OFFLINE&lt;/span&gt;&lt;/div&gt;
+  &lt;/div&gt;
 
-  <div class="live2-controls">
-    <div class="live2-control">
-      <label>Pilih Strategy Live</label>
-      <select id="live2Strategy" onchange="updateLive2StrategyInfo()">
-        <option value="adaptive" selected>Monthly Consistency (Recommended)</option>
-        <option value="strict">Strict Quality</option>
-        <option value="trend">Trend Only</option>
-        <option value="range">Range Only</option>
-      </select>
-    </div>
-    <div class="live2-control">
-      <label>Timeframe</label>
-      <select id="live2Tf">
-        <option value="15m" selected>15M</option>
-        <option value="1h">1H</option>
-        <option value="4h">4H</option>
-      </select>
-    </div>
-    <div class="live2-control">
-      <label>Paper balance</label>
-      <input id="live2StartBalance" type="number" value="100" min="1">
-    </div>
-    <div class="live2-control">
-      <label>Cooldown candle</label>
-      <input id="live2Cooldown" type="number" value="3" min="0" max="20">
-    </div>
-    <div class="live2-control">
-      <label>Risk / signal</label>
-      <input id="live2Risk" type="number" value="1" min="0.1" max="5" step="0.1">
-    </div>
+  &lt;div class=&quot;live2-controls&quot;&gt;
+    &lt;div class=&quot;live2-control&quot;&gt;
+      &lt;label&gt;Pilih Strategy Live&lt;/label&gt;
+      &lt;select id=&quot;live2Strategy&quot; onchange=&quot;updateLive2StrategyInfo()&quot;&gt;
+        &lt;option value=&quot;adaptive&quot; selected&gt;Monthly Consistency (Recommended)&lt;/option&gt;
+        &lt;option value=&quot;strict&quot;&gt;Strict Quality&lt;/option&gt;
+        &lt;option value=&quot;trend&quot;&gt;Trend Only&lt;/option&gt;
+        &lt;option value=&quot;range&quot;&gt;Range Only&lt;/option&gt;
+      &lt;/select&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;live2-control&quot;&gt;
+      &lt;label&gt;Timeframe&lt;/label&gt;
+      &lt;select id=&quot;live2Tf&quot;&gt;
+        &lt;option value=&quot;15m&quot; selected&gt;15M&lt;/option&gt;
+        &lt;option value=&quot;1h&quot;&gt;1H&lt;/option&gt;
+        &lt;option value=&quot;4h&quot;&gt;4H&lt;/option&gt;
+      &lt;/select&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;live2-control&quot;&gt;
+      &lt;label&gt;Paper balance&lt;/label&gt;
+      &lt;input id=&quot;live2StartBalance&quot; type=&quot;number&quot; value=&quot;100&quot; min=&quot;1&quot;&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;live2-control&quot;&gt;
+      &lt;label&gt;Cooldown candle&lt;/label&gt;
+      &lt;input id=&quot;live2Cooldown&quot; type=&quot;number&quot; value=&quot;3&quot; min=&quot;0&quot; max=&quot;20&quot;&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;live2-control&quot;&gt;
+      &lt;label&gt;Risk / signal&lt;/label&gt;
+      &lt;input id=&quot;live2Risk&quot; type=&quot;number&quot; value=&quot;1&quot; min=&quot;0.1&quot; max=&quot;5&quot; step=&quot;0.1&quot;&gt;
+    &lt;/div&gt;
   
-</div>
+&lt;/div&gt;
 
-<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:.8rem;margin-bottom:.8rem">
-  <div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Strategy aktif untuk Live Signal:</div>
-  <div id="live2StrategyInfo" style="font-size:16px;font-weight:900;color:#f8fafc">Monthly Consistency (Recommended)</div>
-  <div id="live2StrategyDesc" style="font-size:11px;color:#64748b;margin-top:4px">
+&lt;div style=&quot;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:.8rem;margin-bottom:.8rem&quot;&gt;
+  &lt;div style=&quot;font-size:11px;color:#94a3b8;margin-bottom:6px&quot;&gt;Strategy aktif untuk Live Signal:&lt;/div&gt;
+  &lt;div id=&quot;live2StrategyInfo&quot; style=&quot;font-size:16px;font-weight:900;color:#f8fafc&quot;&gt;Monthly Consistency (Recommended)&lt;/div&gt;
+  &lt;div id=&quot;live2StrategyDesc&quot; style=&quot;font-size:11px;color:#64748b;margin-top:4px&quot;&gt;
     Fokus profit konsisten bulanan dan menghindari spam signal.
-  </div>
-</div>
+  &lt;/div&gt;
+&lt;/div&gt;
 
-  <div class="live2-grid">
-    <div class="live2-box"><div class="label">Live price</div><div class="value" id="live2Price">$--</div><div class="note">BTCUSDT</div></div>
-    <div class="live2-box"><div class="label">Paper balance</div><div class="value" id="live2Balance">$100.00</div><div class="note">simulasi live</div></div>
-    <div class="live2-box"><div class="label">Open position</div><div class="value" id="live2Position">NONE</div><div class="note" id="live2PositionNote">belum ada</div></div>
-    <div class="live2-box"><div class="label">Regime</div><div class="value" id="live2Regime">--</div><div class="note">market state</div></div>
-    <div class="live2-box"><div class="label">Auto lev</div><div class="value" id="live2Lev">--</div><div class="note">strategy hint</div></div>
-  </div>
+  &lt;div class=&quot;live2-grid&quot;&gt;
+    &lt;div class=&quot;live2-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Live price&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Price&quot;&gt;$--&lt;/div&gt;&lt;div class=&quot;note&quot;&gt;BTCUSDT&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;live2-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Paper balance&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Balance&quot;&gt;$100.00&lt;/div&gt;&lt;div class=&quot;note&quot;&gt;simulasi live&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;live2-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Open position&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Position&quot;&gt;NONE&lt;/div&gt;&lt;div class=&quot;note&quot; id=&quot;live2PositionNote&quot;&gt;belum ada&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;live2-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Regime&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Regime&quot;&gt;--&lt;/div&gt;&lt;div class=&quot;note&quot;&gt;market state&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;live2-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Auto lev&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Lev&quot;&gt;--&lt;/div&gt;&lt;div class=&quot;note&quot;&gt;strategy hint&lt;/div&gt;&lt;/div&gt;
+  &lt;/div&gt;
 
-  <div class="live2-signal">
-    <div class="live2-signal-main">
-      <div class="live2-action wait" id="live2Action">WAIT</div>
-      <div class="live2-score" id="live2Score">Score --/10</div>
-    </div>
-    <div class="live2-levels">
-      <div class="live2-level"><div class="label">Entry</div><div class="value" id="live2Entry">$--</div></div>
-      <div class="live2-level"><div class="label">TP</div><div class="value" id="live2Tp">$--</div></div>
-      <div class="live2-level"><div class="label">SL</div><div class="value" id="live2Sl">$--</div></div>
-      <div class="live2-level"><div class="label">Reason</div><div class="value" id="live2Reason">--</div></div>
-    </div>
-  </div>
+  &lt;div class=&quot;live2-signal&quot;&gt;
+    &lt;div class=&quot;live2-signal-main&quot;&gt;
+      &lt;div class=&quot;live2-action wait&quot; id=&quot;live2Action&quot;&gt;WAIT&lt;/div&gt;
+      &lt;div class=&quot;live2-score&quot; id=&quot;live2Score&quot;&gt;Score --/10&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;live2-levels&quot;&gt;
+      &lt;div class=&quot;live2-level&quot;&gt;&lt;div class=&quot;label&quot;&gt;Entry&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Entry&quot;&gt;$--&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;live2-level&quot;&gt;&lt;div class=&quot;label&quot;&gt;TP&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Tp&quot;&gt;$--&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;live2-level&quot;&gt;&lt;div class=&quot;label&quot;&gt;SL&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Sl&quot;&gt;$--&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;live2-level&quot;&gt;&lt;div class=&quot;label&quot;&gt;Reason&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;live2Reason&quot;&gt;--&lt;/div&gt;&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
 
-  <div class="live2-actions">
-    <button class="live2-btn primary" id="live2StartBtn" onclick="startLive2()">Start Live Signal</button>
-    <button class="live2-btn danger" id="live2StopBtn" onclick="stopLive2()">Stop</button>
-    <button class="live2-btn" onclick="resetLive2Paper()">Reset Paper</button>
-    <button class="live2-btn" onclick="runSim()">Run Backtest</button>
-  </div>
-  <div class="live2-debug" id="live2Debug">Status: standby</div>
-  <div class="live2-log" id="live2Log">
-    <div class="live2-log-row"><span>Time</span><span>Type</span><span>Info</span><span>Price</span><span>Balance</span></div>
-  </div>
-</div>
+  &lt;div class=&quot;live2-actions&quot;&gt;
+    &lt;button class=&quot;live2-btn primary&quot; id=&quot;live2StartBtn&quot; onclick=&quot;startLive2()&quot;&gt;Start Live Signal&lt;/button&gt;
+    &lt;button class=&quot;live2-btn danger&quot; id=&quot;live2StopBtn&quot; onclick=&quot;stopLive2()&quot;&gt;Stop&lt;/button&gt;
+    &lt;button class=&quot;live2-btn&quot; onclick=&quot;resetLive2Paper()&quot;&gt;Reset Paper&lt;/button&gt;
+    &lt;button class=&quot;live2-btn&quot; onclick=&quot;runSim()&quot;&gt;Run Backtest&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;live2-debug&quot; id=&quot;live2Debug&quot;&gt;Status: standby&lt;/div&gt;
+  &lt;div class=&quot;live2-log&quot; id=&quot;live2Log&quot;&gt;
+    &lt;div class=&quot;live2-log-row&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Type&lt;/span&gt;&lt;span&gt;Info&lt;/span&gt;&lt;span&gt;Price&lt;/span&gt;&lt;span&gt;Balance&lt;/span&gt;&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
 
-<div class="live2-chart-card">
-  <div class="live2-chart-head">
-    <div>
-      <div class="live2-chart-title">Live Candlestick Chart</div>
-      <div class="live2-sub">Entry, TP, SL akan digambar langsung sebagai garis native chart saat ada posisi aktif.</div>
-    </div>
-    <div class="live2-chart-info" id="live2ChartInfo">Chart standby<br>klik Start Live Signal</div>
-  </div>
-  <div class="live2-chart-wrap" id="live2ChartWrap">
-    <div id="live2Chart"></div>
-    <div class="live2-placeholder" id="live2Placeholder">Preview candle loading...</div>
-  </div>
-</div>
+&lt;div class=&quot;live2-chart-card&quot;&gt;
+  &lt;div class=&quot;live2-chart-head&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;live2-chart-title&quot;&gt;Live Candlestick Chart&lt;/div&gt;
+      &lt;div class=&quot;live2-sub&quot;&gt;Entry, TP, SL akan digambar langsung sebagai garis native chart saat ada posisi aktif.&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;live2-chart-info&quot; id=&quot;live2ChartInfo&quot;&gt;Chart standby&lt;br&gt;klik Start Live Signal&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;live2-chart-wrap&quot; id=&quot;live2ChartWrap&quot;&gt;
+    &lt;div id=&quot;live2Chart&quot;&gt;&lt;/div&gt;
+    &lt;div class=&quot;live2-placeholder&quot; id=&quot;live2Placeholder&quot;&gt;Preview candle loading...&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
 
-<!-- ADAPTIVE REGIME STRATEGY -->
-<div class="adapt-panel">
-  <div class="adapt-head">
-    <div>
-      <div class="adapt-title">Adaptive Regime Strategy v2</div>
-      <div class="adapt-sub">Strategi hybrid lebih aktif: trend-following, range reversal, dan micro-scalp fallback untuk mengurangi bulan kosong tanpa spam entry.</div>
-    </div>
-    <div class="adapt-badge">V2 Test</div>
-  </div>
+&lt;!-- ADAPTIVE REGIME STRATEGY --&gt;
+&lt;div class=&quot;adapt-panel&quot;&gt;
+  &lt;div class=&quot;adapt-head&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;adapt-title&quot;&gt;Adaptive Regime Strategy v2&lt;/div&gt;
+      &lt;div class=&quot;adapt-sub&quot;&gt;Strategi hybrid lebih aktif: trend-following, range reversal, dan micro-scalp fallback untuk mengurangi bulan kosong tanpa spam entry.&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;adapt-badge&quot;&gt;V2 Test&lt;/div&gt;
+  &lt;/div&gt;
 
-  <div class="adapt-grid">
-    <div class="adapt-box">
-      <div class="alabel">Mode</div>
-      <div class="aval">Active</div>
-      <div class="anote">trend + range + scalp</div>
-    </div>
-    <div class="adapt-box">
-      <div class="alabel">Leverage</div>
-      <div class="aval">Auto</div>
-      <div class="anote">2x–10x</div>
-    </div>
-    <div class="adapt-box">
-      <div class="alabel">TP/SL</div>
-      <div class="aval">Dynamic</div>
-      <div class="anote">ATR based</div>
-    </div>
-    <div class="adapt-box">
-      <div class="alabel">Anti Chop</div>
-      <div class="aval">ON</div>
-      <div class="anote">skip low quality</div>
-    </div>
-  </div>
+  &lt;div class=&quot;adapt-grid&quot;&gt;
+    &lt;div class=&quot;adapt-box&quot;&gt;
+      &lt;div class=&quot;alabel&quot;&gt;Mode&lt;/div&gt;
+      &lt;div class=&quot;aval&quot;&gt;Active&lt;/div&gt;
+      &lt;div class=&quot;anote&quot;&gt;trend + range + scalp&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;adapt-box&quot;&gt;
+      &lt;div class=&quot;alabel&quot;&gt;Leverage&lt;/div&gt;
+      &lt;div class=&quot;aval&quot;&gt;Auto&lt;/div&gt;
+      &lt;div class=&quot;anote&quot;&gt;2x–10x&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;adapt-box&quot;&gt;
+      &lt;div class=&quot;alabel&quot;&gt;TP/SL&lt;/div&gt;
+      &lt;div class=&quot;aval&quot;&gt;Dynamic&lt;/div&gt;
+      &lt;div class=&quot;anote&quot;&gt;ATR based&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;adapt-box&quot;&gt;
+      &lt;div class=&quot;alabel&quot;&gt;Anti Chop&lt;/div&gt;
+      &lt;div class=&quot;aval&quot;&gt;ON&lt;/div&gt;
+      &lt;div class=&quot;anote&quot;&gt;skip low quality&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
 
-  <div class="adapt-rules">
-    <div class="regime-card regime-trend">
-      <h4>Trend Mode</h4>
-      <p>ADX kuat + EMA trend valid. Entry ikut breakout/pullback. TP lebih jauh, trailing aktif.</p>
-    </div>
-    <div class="regime-card regime-range">
-      <h4>Range Mode</h4>
-      <p>ADX rendah + Bollinger extreme. Entry fade upper/lower band. TP lebih dekat.</p>
-    </div>
-    <div class="regime-card regime-vol">
-      <h4>High Volatility</h4>
-      <p>ATR terlalu tinggi. Leverage otomatis turun dan risk diperkecil.</p>
-    </div>
-    <div class="regime-card regime-skip">
-      <h4>No Trade Zone</h4>
-      <p>Volume lemah, ATR kecil, atau candle chop. Bot skip agar tidak overtrade.</p>
-    </div>
-  </div>
+  &lt;div class=&quot;adapt-rules&quot;&gt;
+    &lt;div class=&quot;regime-card regime-trend&quot;&gt;
+      &lt;h4&gt;Trend Mode&lt;/h4&gt;
+      &lt;p&gt;ADX kuat + EMA trend valid. Entry ikut breakout/pullback. TP lebih jauh, trailing aktif.&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;regime-card regime-range&quot;&gt;
+      &lt;h4&gt;Range Mode&lt;/h4&gt;
+      &lt;p&gt;ADX rendah + Bollinger extreme. Entry fade upper/lower band. TP lebih dekat.&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;regime-card regime-vol&quot;&gt;
+      &lt;h4&gt;High Volatility&lt;/h4&gt;
+      &lt;p&gt;ATR terlalu tinggi. Leverage otomatis turun dan risk diperkecil.&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;regime-card regime-skip&quot;&gt;
+      &lt;h4&gt;No Trade Zone&lt;/h4&gt;
+      &lt;p&gt;Volume lemah, ATR kecil, atau candle chop. Bot skip agar tidak overtrade.&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
 
-  <div class="adapt-controls">
-    <div class="adapt-control">
-      <label>Strategy mode</label>
-      <select id="strategyMode">
-        <option value="adaptive" selected>Monthly Consistency v2</option>
-        <option value="strict">Strict Quality</option>
-        <option value="trend">Trend Only</option>
-        <option value="range">Range Only</option>
-      </select>
-    </div>
-    <div class="adapt-control">
-      <label>Auto leverage</label>
-      <select id="autoLev">
-        <option value="on" selected>ON</option>
-        <option value="off">OFF</option>
-      </select>
-    </div>
-    <div class="adapt-control">
-      <label>Max trades / day</label>
-      <input id="maxTradesDay" type="number" value="35" min="1" max="100">
-    </div>
-    <div class="adapt-control">
-      <label>Daily stop loss</label>
-      <input id="dailyStopR" type="number" value="4" min="1" max="10" step="0.5">
-    </div>
-  </div>
-</div>
+  &lt;div class=&quot;adapt-controls&quot;&gt;
+    &lt;div class=&quot;adapt-control&quot;&gt;
+      &lt;label&gt;Strategy mode&lt;/label&gt;
+      &lt;select id=&quot;strategyMode&quot;&gt;
+        &lt;option value=&quot;adaptive&quot; selected&gt;Monthly Consistency v2&lt;/option&gt;
+        &lt;option value=&quot;strict&quot;&gt;Strict Quality&lt;/option&gt;
+        &lt;option value=&quot;trend&quot;&gt;Trend Only&lt;/option&gt;
+        &lt;option value=&quot;range&quot;&gt;Range Only&lt;/option&gt;
+      &lt;/select&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;adapt-control&quot;&gt;
+      &lt;label&gt;Auto leverage&lt;/label&gt;
+      &lt;select id=&quot;autoLev&quot;&gt;
+        &lt;option value=&quot;on&quot; selected&gt;ON&lt;/option&gt;
+        &lt;option value=&quot;off&quot;&gt;OFF&lt;/option&gt;
+      &lt;/select&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;adapt-control&quot;&gt;
+      &lt;label&gt;Max trades / day&lt;/label&gt;
+      &lt;input id=&quot;maxTradesDay&quot; type=&quot;number&quot; value=&quot;35&quot; min=&quot;1&quot; max=&quot;100&quot;&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;adapt-control&quot;&gt;
+      &lt;label&gt;Daily stop loss&lt;/label&gt;
+      &lt;input id=&quot;dailyStopR&quot; type=&quot;number&quot; value=&quot;4&quot; min=&quot;1&quot; max=&quot;10&quot; step=&quot;0.5&quot;&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
 
-<!-- PARAMS -->
-<div class="card">
-  <div class="card-title"><i class="fa-solid fa-sliders"></i> Parameter Binance Futures</div>
-  <div class="params-grid">
-    <div class="param-group">
-      <label>Modal awal (USDT)</label>
-      <input type="number" id="capIn" value="100" min="1">
-    </div>
-    <div class="param-group">
-      <label>Leverage</label>
-      <div class="seg" id="levSeg" style="flex-wrap:wrap">
-        <button class="sg" onclick="pick('lev',1,this)">1x</button>
-        <button class="sg" onclick="pick('lev',2,this)">2x</button>
-        <button class="sg" onclick="pick('lev',3,this)">3x</button>
-        <button class="sg on" onclick="pick('lev',5,this)">5x</button>
-        <button class="sg" onclick="pick('lev',10,this)">10x</button>
-        <button class="sg" onclick="pick('lev',15,this)">15x</button>
-        <button class="sg" onclick="pick('lev',20,this)">20x</button>
-        <button class="sg" onclick="pick('lev',25,this)">25x</button>
-        <button class="sg" onclick="pick('lev',50,this)">50x</button>
-        <button class="sg" onclick="pick('lev',75,this)">75x</button>
-        <button class="sg" onclick="pick('lev',100,this)">100x</button>
-        <button class="sg" onclick="pick('lev',125,this)">125x</button>
-      </div>
-    </div>
-    <div class="param-group">
-      <label>Timeframe sinyal</label>
-      <div class="seg" id="tfSeg">
-        <button class="sg on" onclick="pick('tf','15m',this)">15M</button>
-        <button class="sg" onclick="pick('tf','1h',this)">1H</button>
-        <button class="sg" onclick="pick('tf','4h',this)">4H</button>
-        <button class="sg" onclick="pick('tf','1d',this)">1D</button>
-      </div>
-    </div>
-    <div class="param-group">
-      <label>Risk per trade: <span id="riskV" style="color:var(--text)">1.5%</span></label>
-      <div class="slider-row">
-        <input type="range" id="riskR" min="0.5" max="5" value="1.5" step="0.5" oninput="document.getElementById('riskV').textContent=this.value+'%'">
-      </div>
-    </div>
-    <div class="param-group">
-      <label>SL multiplier (×ATR): <span id="slMV" style="color:var(--text)">1.2×</span></label>
-      <div class="slider-row">
-        <input type="range" id="slM" min="0.8" max="2.5" value="1.2" step="0.1" oninput="document.getElementById('slMV').textContent=parseFloat(this.value).toFixed(1)+'×'">
-      </div>
-    </div>
-    <div class="param-group" style="align-self:center">
-      <div style="font-size:11px;color:var(--green);background:#16a34a0d;padding:6px 10px;border-radius:var(--radius-sm);border:0.5px solid #16a34a33;line-height:1.6">
-        ✓ TP/SL dynamic by regime<br>
-        ✓ Auto leverage by volatility<br>
-        ✓ Anti-chop no trade filter<br>
+&lt;!-- PARAMS --&gt;
+&lt;div class=&quot;card&quot;&gt;
+  &lt;div class=&quot;card-title&quot;&gt;&lt;i class=&quot;fa-solid fa-sliders&quot;&gt;&lt;/i&gt; Parameter Binance Futures&lt;/div&gt;
+  &lt;div class=&quot;params-grid&quot;&gt;
+    &lt;div class=&quot;param-group&quot;&gt;
+      &lt;label&gt;Modal awal (USDT)&lt;/label&gt;
+      &lt;input type=&quot;number&quot; id=&quot;capIn&quot; value=&quot;100&quot; min=&quot;1&quot;&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;param-group&quot;&gt;
+      &lt;label&gt;Leverage&lt;/label&gt;
+      &lt;div class=&quot;seg&quot; id=&quot;levSeg&quot; style=&quot;flex-wrap:wrap&quot;&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,1,this)&quot;&gt;1x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,2,this)&quot;&gt;2x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,3,this)&quot;&gt;3x&lt;/button&gt;
+        &lt;button class=&quot;sg on&quot; onclick=&quot;pick(&#x27;lev&#x27;,5,this)&quot;&gt;5x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,10,this)&quot;&gt;10x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,15,this)&quot;&gt;15x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,20,this)&quot;&gt;20x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,25,this)&quot;&gt;25x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,50,this)&quot;&gt;50x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,75,this)&quot;&gt;75x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,100,this)&quot;&gt;100x&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;lev&#x27;,125,this)&quot;&gt;125x&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;param-group&quot;&gt;
+      &lt;label&gt;Timeframe sinyal&lt;/label&gt;
+      &lt;div class=&quot;seg&quot; id=&quot;tfSeg&quot;&gt;
+        &lt;button class=&quot;sg on&quot; onclick=&quot;pick(&#x27;tf&#x27;,&#x27;15m&#x27;,this)&quot;&gt;15M&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;tf&#x27;,&#x27;1h&#x27;,this)&quot;&gt;1H&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;tf&#x27;,&#x27;4h&#x27;,this)&quot;&gt;4H&lt;/button&gt;
+        &lt;button class=&quot;sg&quot; onclick=&quot;pick(&#x27;tf&#x27;,&#x27;1d&#x27;,this)&quot;&gt;1D&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;param-group&quot;&gt;
+      &lt;label&gt;Risk per trade: &lt;span id=&quot;riskV&quot; style=&quot;color:var(--text)&quot;&gt;1.5%&lt;/span&gt;&lt;/label&gt;
+      &lt;div class=&quot;slider-row&quot;&gt;
+        &lt;input type=&quot;range&quot; id=&quot;riskR&quot; min=&quot;0.5&quot; max=&quot;5&quot; value=&quot;1.5&quot; step=&quot;0.5&quot; oninput=&quot;document.getElementById(&#x27;riskV&#x27;).textContent=this.value+&#x27;%&#x27;&quot;&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;param-group&quot;&gt;
+      &lt;label&gt;SL multiplier (×ATR): &lt;span id=&quot;slMV&quot; style=&quot;color:var(--text)&quot;&gt;1.2×&lt;/span&gt;&lt;/label&gt;
+      &lt;div class=&quot;slider-row&quot;&gt;
+        &lt;input type=&quot;range&quot; id=&quot;slM&quot; min=&quot;0.8&quot; max=&quot;2.5&quot; value=&quot;1.2&quot; step=&quot;0.1&quot; oninput=&quot;document.getElementById(&#x27;slMV&#x27;).textContent=parseFloat(this.value).toFixed(1)+&#x27;×&#x27;&quot;&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;param-group&quot; style=&quot;align-self:center&quot;&gt;
+      &lt;div style=&quot;font-size:11px;color:var(--green);background:#16a34a0d;padding:6px 10px;border-radius:var(--radius-sm);border:0.5px solid #16a34a33;line-height:1.6&quot;&gt;
+        ✓ TP/SL dynamic by regime&lt;br&gt;
+        ✓ Auto leverage by volatility&lt;br&gt;
+        ✓ Anti-chop no trade filter&lt;br&gt;
         ✓ Fee maker/taker Binance real
-      </div>
-    </div>
-  </div>
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
 
-  <div class="run-area">
-    <div class="run-info">
-      <span id="periodInfo2">—</span><br>
-      <span id="dataSource2" style="color:var(--text3)">—</span>
-    </div>
-    <button class="rbtn" id="runBtn" onclick="runSim()">
-      <i class="fa-solid fa-play"></i> Jalankan Backtest
-    </button>
-  </div>
-</div>
+  &lt;div class=&quot;run-area&quot;&gt;
+    &lt;div class=&quot;run-info&quot;&gt;
+      &lt;span id=&quot;periodInfo2&quot;&gt;—&lt;/span&gt;&lt;br&gt;
+      &lt;span id=&quot;dataSource2&quot; style=&quot;color:var(--text3)&quot;&gt;—&lt;/span&gt;
+    &lt;/div&gt;
+    &lt;button class=&quot;rbtn&quot; id=&quot;runBtn&quot; onclick=&quot;runSim()&quot;&gt;
+      &lt;i class=&quot;fa-solid fa-play&quot;&gt;&lt;/i&gt; Jalankan Backtest
+    &lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
 
-<!-- PROGRESS -->
-<div class="sbar">
-  <span id="stTxt">Pilih periode dan klik Jalankan</span>
-  <div class="pb"><div class="pf2" id="pfEl" style="width:0%"></div></div>
-  <span id="stPct" style="min-width:28px;text-align:right;font-weight:500">0%</span>
-</div>
+&lt;!-- PROGRESS --&gt;
+&lt;div class=&quot;sbar&quot;&gt;
+  &lt;span id=&quot;stTxt&quot;&gt;Pilih periode dan klik Jalankan&lt;/span&gt;
+  &lt;div class=&quot;pb&quot;&gt;&lt;div class=&quot;pf2&quot; id=&quot;pfEl&quot; style=&quot;width:0%&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+  &lt;span id=&quot;stPct&quot; style=&quot;min-width:28px;text-align:right;font-weight:500&quot;&gt;0%&lt;/span&gt;
+&lt;/div&gt;
 
-<!-- METRICS -->
-<div class="mg4">
-  <div class="mc"><div class="ml">Modal akhir</div><div class="mv" id="mFin" style="color:var(--text)">$--</div><div class="ms" id="mFinS">dari $--</div></div>
-  <div class="mc"><div class="ml">Net profit</div><div class="mv" id="mRet" style="color:var(--text)">$--</div><div class="ms" id="mRetPct">--%</div></div>
-  <div class="mc"><div class="ml">Win rate</div><div class="mv" id="mWR" style="color:var(--text)">--%</div><div class="ms" id="mWRS">--</div></div>
-  <div class="mc"><div class="ml">Profit factor</div><div class="mv" id="mPF" style="color:var(--text)">--</div><div class="ms">gross P ÷ gross L</div></div>
-</div>
-<div class="mg4">
-  <div class="mc"><div class="ml">Total trade</div><div class="mv" id="mTot" style="color:var(--text)">--</div><div class="ms" id="mTotS">--/hari · --/bln</div></div>
-  <div class="mc"><div class="ml">Expectancy</div><div class="mv" id="mExp" style="color:var(--text)">$--</div><div class="ms">avg P&L/trade</div></div>
-  <div class="mc"><div class="ml">Max drawdown</div><div class="mv" id="mDD" style="color:var(--text)">--%</div><div class="ms">penurunan modal</div></div>
-  <div class="mc"><div class="ml">Fee / gross profit</div><div class="mv" id="mFeeR" style="color:var(--yellow)">--%</div><div class="ms" id="mFeeT">$-- fee total</div></div>
-</div>
-<div class="mg3">
-  <div class="mc"><div class="ml">Avg profit/hari</div><div class="mv" id="pjDay" style="color:var(--text)">$--</div><div class="ms">aktual periode ini</div></div>
-  <div class="mc"><div class="ml">Proyeksi/bulan</div><div class="mv" id="pjMon" style="color:var(--text)">$--</div><div class="ms">30× avg/hari</div></div>
-  <div class="mc"><div class="ml">Proyeksi/tahun</div><div class="mv" id="pjYr" style="color:var(--text)">$--</div><div class="ms">compound 12 bln</div></div>
-</div>
+&lt;!-- METRICS --&gt;
+&lt;div class=&quot;mg4&quot;&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Modal akhir&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;mFin&quot; style=&quot;color:var(--text)&quot;&gt;$--&lt;/div&gt;&lt;div class=&quot;ms&quot; id=&quot;mFinS&quot;&gt;dari $--&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Net profit&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;mRet&quot; style=&quot;color:var(--text)&quot;&gt;$--&lt;/div&gt;&lt;div class=&quot;ms&quot; id=&quot;mRetPct&quot;&gt;--%&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Win rate&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;mWR&quot; style=&quot;color:var(--text)&quot;&gt;--%&lt;/div&gt;&lt;div class=&quot;ms&quot; id=&quot;mWRS&quot;&gt;--&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Profit factor&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;mPF&quot; style=&quot;color:var(--text)&quot;&gt;--&lt;/div&gt;&lt;div class=&quot;ms&quot;&gt;gross P ÷ gross L&lt;/div&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;mg4&quot;&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Total trade&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;mTot&quot; style=&quot;color:var(--text)&quot;&gt;--&lt;/div&gt;&lt;div class=&quot;ms&quot; id=&quot;mTotS&quot;&gt;--/hari · --/bln&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Expectancy&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;mExp&quot; style=&quot;color:var(--text)&quot;&gt;$--&lt;/div&gt;&lt;div class=&quot;ms&quot;&gt;avg P&amp;L/trade&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Max drawdown&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;mDD&quot; style=&quot;color:var(--text)&quot;&gt;--%&lt;/div&gt;&lt;div class=&quot;ms&quot;&gt;penurunan modal&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Fee / gross profit&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;mFeeR&quot; style=&quot;color:var(--yellow)&quot;&gt;--%&lt;/div&gt;&lt;div class=&quot;ms&quot; id=&quot;mFeeT&quot;&gt;$-- fee total&lt;/div&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;mg3&quot;&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Avg profit/hari&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;pjDay&quot; style=&quot;color:var(--text)&quot;&gt;$--&lt;/div&gt;&lt;div class=&quot;ms&quot;&gt;aktual periode ini&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Proyeksi/bulan&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;pjMon&quot; style=&quot;color:var(--text)&quot;&gt;$--&lt;/div&gt;&lt;div class=&quot;ms&quot;&gt;30× avg/hari&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;mc&quot;&gt;&lt;div class=&quot;ml&quot;&gt;Proyeksi/tahun&lt;/div&gt;&lt;div class=&quot;mv&quot; id=&quot;pjYr&quot; style=&quot;color:var(--text)&quot;&gt;$--&lt;/div&gt;&lt;div class=&quot;ms&quot;&gt;compound 12 bln&lt;/div&gt;&lt;/div&gt;
+&lt;/div&gt;
 
-<div id="rwarn" class="warn wy" style="display:none"></div>
+&lt;div id=&quot;rwarn&quot; class=&quot;warn wy&quot; style=&quot;display:none&quot;&gt;&lt;/div&gt;
 
 
-<!-- MONTHLY CONSISTENCY V2 -->
-<div class="monthly-panel" id="monthlyPanel" style="display:none">
-  <div class="monthly-head">
-    <div>
-      <div class="monthly-title">Monthly Consistency Check</div>
-      <div class="monthly-sub">Cek apakah profit tersebar merata per bulan, bukan cuma ketolong satu bulan besar.</div>
-    </div>
-  </div>
-  <div class="monthly-grid">
-    <div class="monthly-box"><div class="label">Green months</div><div class="value" id="greenMonths">--</div></div>
-    <div class="monthly-box"><div class="label">Red months</div><div class="value" id="redMonths">--</div></div>
-    <div class="monthly-box"><div class="label">Best month</div><div class="value" id="bestMonth">--</div></div>
-    <div class="monthly-box"><div class="label">Worst month</div><div class="value" id="worstMonth">--</div></div>
-  </div>
-  <div class="monthly-list" id="monthlyList"></div>
-</div>
+&lt;!-- MONTHLY CONSISTENCY V2 --&gt;
+&lt;div class=&quot;monthly-panel&quot; id=&quot;monthlyPanel&quot; style=&quot;display:none&quot;&gt;
+  &lt;div class=&quot;monthly-head&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;monthly-title&quot;&gt;Monthly Consistency Check&lt;/div&gt;
+      &lt;div class=&quot;monthly-sub&quot;&gt;Cek apakah profit tersebar merata per bulan, bukan cuma ketolong satu bulan besar.&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;monthly-grid&quot;&gt;
+    &lt;div class=&quot;monthly-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Green months&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;greenMonths&quot;&gt;--&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;monthly-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Red months&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;redMonths&quot;&gt;--&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;monthly-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Best month&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;bestMonth&quot;&gt;--&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;monthly-box&quot;&gt;&lt;div class=&quot;label&quot;&gt;Worst month&lt;/div&gt;&lt;div class=&quot;value&quot; id=&quot;worstMonth&quot;&gt;--&lt;/div&gt;&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;monthly-list&quot; id=&quot;monthlyList&quot;&gt;&lt;/div&gt;
+&lt;/div&gt;
 
-<!-- EQUITY CURVE -->
-<div class="card">
-  <div class="card-title"><i class="fa-solid fa-chart-line"></i> Equity curve — <span id="eqTitle" style="color:var(--text2);font-weight:400;text-transform:none;letter-spacing:0">--</span></div>
-  <div class="ch" style="height:200px"><canvas id="eqC"></canvas></div>
-</div>
+&lt;!-- EQUITY CURVE --&gt;
+&lt;div class=&quot;card&quot;&gt;
+  &lt;div class=&quot;card-title&quot;&gt;&lt;i class=&quot;fa-solid fa-chart-line&quot;&gt;&lt;/i&gt; Equity curve — &lt;span id=&quot;eqTitle&quot; style=&quot;color:var(--text2);font-weight:400;text-transform:none;letter-spacing:0&quot;&gt;--&lt;/span&gt;&lt;/div&gt;
+  &lt;div class=&quot;ch&quot; style=&quot;height:200px&quot;&gt;&lt;canvas id=&quot;eqC&quot;&gt;&lt;/canvas&gt;&lt;/div&gt;
+&lt;/div&gt;
 
-<!-- P&L CHARTS -->
-<div class="mg2">
-  <div class="card" style="margin-bottom:0">
-    <div class="card-title"><i class="fa-solid fa-chart-bar"></i> P&L per hari</div>
-    <div class="ch" style="height:145px"><canvas id="dlyC"></canvas></div>
-  </div>
-  <div class="card" style="margin-bottom:0">
-    <div class="card-title"><i class="fa-solid fa-chart-bar"></i> P&L per bulan</div>
-    <div class="ch" style="height:145px"><canvas id="mthC"></canvas></div>
-  </div>
-</div>
+&lt;!-- P&amp;L CHARTS --&gt;
+&lt;div class=&quot;mg2&quot;&gt;
+  &lt;div class=&quot;card&quot; style=&quot;margin-bottom:0&quot;&gt;
+    &lt;div class=&quot;card-title&quot;&gt;&lt;i class=&quot;fa-solid fa-chart-bar&quot;&gt;&lt;/i&gt; P&amp;L per hari&lt;/div&gt;
+    &lt;div class=&quot;ch&quot; style=&quot;height:145px&quot;&gt;&lt;canvas id=&quot;dlyC&quot;&gt;&lt;/canvas&gt;&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;card&quot; style=&quot;margin-bottom:0&quot;&gt;
+    &lt;div class=&quot;card-title&quot;&gt;&lt;i class=&quot;fa-solid fa-chart-bar&quot;&gt;&lt;/i&gt; P&amp;L per bulan&lt;/div&gt;
+    &lt;div class=&quot;ch&quot; style=&quot;height:145px&quot;&gt;&lt;canvas id=&quot;mthC&quot;&gt;&lt;/canvas&gt;&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
 
-<!-- DAY LIST -->
-<div class="card" style="margin-top:.6rem">
-  <div class="card-title"><i class="fa-regular fa-calendar-days"></i> Detail per hari — klik untuk lihat trade</div>
-  <div id="dayList"><div style="font-size:12px;color:var(--text3);text-align:center;padding:10px">Jalankan backtest dulu</div></div>
-</div>
-<div class="card" id="dayDetailCard" style="display:none">
-  <div class="card-title" id="dayDetailTitle"></div>
-  <div id="dayDetailTrades"></div>
-</div>
+&lt;!-- DAY LIST --&gt;
+&lt;div class=&quot;card&quot; style=&quot;margin-top:.6rem&quot;&gt;
+  &lt;div class=&quot;card-title&quot;&gt;&lt;i class=&quot;fa-regular fa-calendar-days&quot;&gt;&lt;/i&gt; Detail per hari — klik untuk lihat trade&lt;/div&gt;
+  &lt;div id=&quot;dayList&quot;&gt;&lt;div style=&quot;font-size:12px;color:var(--text3);text-align:center;padding:10px&quot;&gt;Jalankan backtest dulu&lt;/div&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;card&quot; id=&quot;dayDetailCard&quot; style=&quot;display:none&quot;&gt;
+  &lt;div class=&quot;card-title&quot; id=&quot;dayDetailTitle&quot;&gt;&lt;/div&gt;
+  &lt;div id=&quot;dayDetailTrades&quot;&gt;&lt;/div&gt;
+&lt;/div&gt;
 
-<!-- TRADE LOG -->
-<div class="card">
-  <div class="card-title"><i class="fa-solid fa-list"></i> Log trade (50 terakhir)</div>
-  <div style="display:flex;gap:4px;font-size:9px;color:var(--text3);padding-bottom:4px;border-bottom:0.5px solid var(--border);margin-bottom:3px">
-    <span style="min-width:18px">#</span><span style="min-width:30px">Dir</span>
-    <span style="min-width:80px">Setup</span><span style="min-width:90px">Waktu masuk</span>
-    <span style="min-width:65px">Entry</span><span style="min-width:55px;text-align:right">P&L</span>
-    <span style="min-width:52px;text-align:right">Ekuitas</span><span style="flex:1;text-align:right">Status</span>
-  </div>
-  <div id="tlog"><div style="font-size:12px;color:var(--text3);text-align:center;padding:10px">Jalankan backtest dulu</div></div>
-</div>
+&lt;!-- TRADE LOG --&gt;
+&lt;div class=&quot;card&quot;&gt;
+  &lt;div class=&quot;card-title&quot;&gt;&lt;i class=&quot;fa-solid fa-list&quot;&gt;&lt;/i&gt; Log trade (50 terakhir)&lt;/div&gt;
+  &lt;div style=&quot;display:flex;gap:4px;font-size:9px;color:var(--text3);padding-bottom:4px;border-bottom:0.5px solid var(--border);margin-bottom:3px&quot;&gt;
+    &lt;span style=&quot;min-width:18px&quot;&gt;#&lt;/span&gt;&lt;span style=&quot;min-width:30px&quot;&gt;Dir&lt;/span&gt;
+    &lt;span style=&quot;min-width:80px&quot;&gt;Setup&lt;/span&gt;&lt;span style=&quot;min-width:90px&quot;&gt;Waktu masuk&lt;/span&gt;
+    &lt;span style=&quot;min-width:65px&quot;&gt;Entry&lt;/span&gt;&lt;span style=&quot;min-width:55px;text-align:right&quot;&gt;P&amp;L&lt;/span&gt;
+    &lt;span style=&quot;min-width:52px;text-align:right&quot;&gt;Ekuitas&lt;/span&gt;&lt;span style=&quot;flex:1;text-align:right&quot;&gt;Status&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div id=&quot;tlog&quot;&gt;&lt;div style=&quot;font-size:12px;color:var(--text3);text-align:center;padding:10px&quot;&gt;Jalankan backtest dulu&lt;/div&gt;&lt;/div&gt;
+&lt;/div&gt;
 
-<!-- FOOTER -->
-<div class="footer">
-  <strong style="color:var(--text2)">BTC Futures Backtest</strong> — Data: Binance Public API · Strategi: Adaptive Multi-Signal · Adaptive Regime · Dynamic TP/SL · Auto Leverage · Fee real maker/taker<br>
+&lt;!-- FOOTER --&gt;
+&lt;div class=&quot;footer&quot;&gt;
+  &lt;strong style=&quot;color:var(--text2)&quot;&gt;BTC Futures Backtest&lt;/strong&gt; — Data: Binance Public API · Strategi: Adaptive Multi-Signal · Adaptive Regime · Dynamic TP/SL · Auto Leverage · Fee real maker/taker&lt;br&gt;
   ⚠ Hasil backtest tidak menjamin profit di live trading. Selalu gunakan modal yang siap hilang.
-</div>
-</div>
+&lt;/div&gt;
+&lt;/div&gt;
 
-<script>
+&lt;script&gt;
 // ═══ GLOBALS ═══
-let LEV=5,TF='15m';
+let LEV=5,TF=&#x27;15m&#x27;;
 let charts={eq:null,dly:null,mth:null};
 const FM=0.0002,FT=0.0004,FUND=0.0001;
-const TFH={'15m':0.25,'1h':1,'4h':4,'1d':24};
-const MONTHS=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-const MONTHS_S=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+const TFH={&#x27;15m&#x27;:0.25,&#x27;1h&#x27;:1,&#x27;4h&#x27;:4,&#x27;1d&#x27;:24};
+const MONTHS=[&#x27;Januari&#x27;,&#x27;Februari&#x27;,&#x27;Maret&#x27;,&#x27;April&#x27;,&#x27;Mei&#x27;,&#x27;Juni&#x27;,&#x27;Juli&#x27;,&#x27;Agustus&#x27;,&#x27;September&#x27;,&#x27;Oktober&#x27;,&#x27;November&#x27;,&#x27;Desember&#x27;];
+const MONTHS_S=[&#x27;Jan&#x27;,&#x27;Feb&#x27;,&#x27;Mar&#x27;,&#x27;Apr&#x27;,&#x27;Mei&#x27;,&#x27;Jun&#x27;,&#x27;Jul&#x27;,&#x27;Ags&#x27;,&#x27;Sep&#x27;,&#x27;Okt&#x27;,&#x27;Nov&#x27;,&#x27;Des&#x27;];
 let fromY,fromM,fromD,toY,toM,toD;
 
 // ═══ DATE SYSTEM ═══
 function initDates(){
   const now=new Date();
   const cy=now.getFullYear(),cm=now.getMonth()+1;
-  ['fromYear','toYear'].forEach(id=>{
+  [&#x27;fromYear&#x27;,&#x27;toYear&#x27;].forEach(id=&gt;{
     const s=document.getElementById(id);
-    for(let y=2017;y<=cy;y++){const o=document.createElement('option');o.value=y;o.textContent=y;s.appendChild(o);}
+    for(let y=2017;y&lt;=cy;y++){const o=document.createElement(&#x27;option&#x27;);o.value=y;o.textContent=y;s.appendChild(o);}
   });
-  ['fromMonth','toMonth'].forEach(id=>{
+  [&#x27;fromMonth&#x27;,&#x27;toMonth&#x27;].forEach(id=&gt;{
     const s=document.getElementById(id);
-    MONTHS.forEach((m,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=m;s.appendChild(o);});
+    MONTHS.forEach((m,i)=&gt;{const o=document.createElement(&#x27;option&#x27;);o.value=i+1;o.textContent=m;s.appendChild(o);});
   });
-  ['fromDay','toDay'].forEach(id=>{
+  [&#x27;fromDay&#x27;,&#x27;toDay&#x27;].forEach(id=&gt;{
     const s=document.getElementById(id);
-    for(let d=1;d<=31;d++){const o=document.createElement('option');o.value=d;o.textContent=d;s.appendChild(o);}
+    for(let d=1;d&lt;=31;d++){const o=document.createElement(&#x27;option&#x27;);o.value=d;o.textContent=d;s.appendChild(o);}
   });
   // Default: bulan lalu
   const lm=new Date(cy,cm-2,1);
   const lme=new Date(cy,cm-1,0);
   setFrom(lm.getFullYear(),lm.getMonth()+1,1);
   setTo(lme.getFullYear(),lme.getMonth()+1,lme.getDate());
-  ['fromDay','fromMonth','fromYear','toDay','toMonth','toYear'].forEach(id=>{
-    document.getElementById(id).addEventListener('change',()=>{syncSelects();updatePreview();clearQB();});
+  [&#x27;fromDay&#x27;,&#x27;fromMonth&#x27;,&#x27;fromYear&#x27;,&#x27;toDay&#x27;,&#x27;toMonth&#x27;,&#x27;toYear&#x27;].forEach(id=&gt;{
+    document.getElementById(id).addEventListener(&#x27;change&#x27;,()=&gt;{syncSelects();updatePreview();clearQB();});
   });
   buildQuickBtns();
   updatePreview();
 }
-function setFrom(y,m,d){fromY=y;fromM=m;fromD=d;document.getElementById('fromYear').value=y;document.getElementById('fromMonth').value=m;document.getElementById('fromDay').value=d;}
-function setTo(y,m,d){toY=y;toM=m;toD=d;document.getElementById('toYear').value=y;document.getElementById('toMonth').value=m;document.getElementById('toDay').value=d;}
-function syncSelects(){fromY=+document.getElementById('fromYear').value;fromM=+document.getElementById('fromMonth').value;fromD=+document.getElementById('fromDay').value;toY=+document.getElementById('toYear').value;toM=+document.getElementById('toMonth').value;toD=+document.getElementById('toDay').value;}
+function setFrom(y,m,d){fromY=y;fromM=m;fromD=d;document.getElementById(&#x27;fromYear&#x27;).value=y;document.getElementById(&#x27;fromMonth&#x27;).value=m;document.getElementById(&#x27;fromDay&#x27;).value=d;}
+function setTo(y,m,d){toY=y;toM=m;toD=d;document.getElementById(&#x27;toYear&#x27;).value=y;document.getElementById(&#x27;toMonth&#x27;).value=m;document.getElementById(&#x27;toDay&#x27;).value=d;}
+function syncSelects(){fromY=+document.getElementById(&#x27;fromYear&#x27;).value;fromM=+document.getElementById(&#x27;fromMonth&#x27;).value;fromD=+document.getElementById(&#x27;fromDay&#x27;).value;toY=+document.getElementById(&#x27;toYear&#x27;).value;toM=+document.getElementById(&#x27;toMonth&#x27;).value;toD=+document.getElementById(&#x27;toDay&#x27;).value;}
 function getFromTs(){return new Date(fromY,fromM-1,fromD,0,0,0).getTime();}
 function getToTs(){return new Date(toY,toM-1,toD,23,59,59).getTime();}
 function getDays(){return Math.max(1,Math.round((getToTs()-getFromTs())/86400000));}
-function clearQB(){document.querySelectorAll('.qb').forEach(b=>b.classList.remove('on'));}
+function clearQB(){document.querySelectorAll(&#x27;.qb&#x27;).forEach(b=&gt;b.classList.remove(&#x27;on&#x27;));}
 function buildQuickBtns(){
   const now=new Date(),cy=now.getFullYear(),cm=now.getMonth()+1;
-  const mEl=document.getElementById('monthBtns');
-  for(let i=14;i>=0;i--){
+  const mEl=document.getElementById(&#x27;monthBtns&#x27;);
+  for(let i=14;i&gt;=0;i--){
     const d=new Date(cy,cm-1-i,1);
     const y=d.getFullYear(),m=d.getMonth()+1;
-    const btn=document.createElement('button');
-    btn.className='qb';btn.textContent=MONTHS_S[m-1]+' '+y;
-    btn.onclick=function(){const e=new Date(y,m,0);setFrom(y,m,1);setTo(y,m,e.getDate());updatePreview();clearQB();this.classList.add('on');};
+    const btn=document.createElement(&#x27;button&#x27;);
+    btn.className=&#x27;qb&#x27;;btn.textContent=MONTHS_S[m-1]+&#x27; &#x27;+y;
+    btn.onclick=function(){const e=new Date(y,m,0);setFrom(y,m,1);setTo(y,m,e.getDate());updatePreview();clearQB();this.classList.add(&#x27;on&#x27;);};
     mEl.appendChild(btn);
   }
-  const yEl=document.getElementById('yearBtns');
-  for(let y=2017;y<=cy;y++){
-    const btn=document.createElement('button');
-    btn.className='qb';btn.textContent=y;
+  const yEl=document.getElementById(&#x27;yearBtns&#x27;);
+  for(let y=2017;y&lt;=cy;y++){
+    const btn=document.createElement(&#x27;button&#x27;);
+    btn.className=&#x27;qb&#x27;;btn.textContent=y;
     btn.onclick=function(){
       const ed=y===cy?now.getDate():31,em=y===cy?cm:12;
-      setFrom(y,1,1);setTo(y,em,ed);updatePreview();clearQB();this.classList.add('on');
+      setFrom(y,1,1);setTo(y,em,ed);updatePreview();clearQB();this.classList.add(&#x27;on&#x27;);
     };
     yEl.appendChild(btn);
   }
@@ -980,14 +1113,14 @@ function updatePreview(){
   const days=getDays(),aTF=getATF(days),h=TFH[aTF]||1;
   const est=Math.min(Math.ceil(days*24/h),1000);
   const fs=`${fromD} ${MONTHS[fromM-1]} ${fromY}`,ts=`${toD} ${MONTHS[toM-1]} ${toY}`;
-  const note=aTF!==TF?` · Auto-adjust ke ${aTF.toUpperCase()} (periode terlalu panjang untuk ${TF.toUpperCase()})` : '';
-  document.getElementById('datePreview').innerHTML=`<strong>${fs}</strong> → <strong>${ts}</strong> &nbsp;·&nbsp; ${days} hari &nbsp;·&nbsp; ~${est} candle ${aTF.toUpperCase()}${note}`;
-  document.getElementById('periodInfo2').textContent=`${fs} → ${ts} · ${days} hari`;
+  const note=aTF!==TF?` · Auto-adjust ke ${aTF.toUpperCase()} (periode terlalu panjang untuk ${TF.toUpperCase()})` : &#x27;&#x27;;
+  document.getElementById(&#x27;datePreview&#x27;).innerHTML=`&lt;strong&gt;${fs}&lt;/strong&gt; → &lt;strong&gt;${ts}&lt;/strong&gt; &amp;nbsp;·&amp;nbsp; ${days} hari &amp;nbsp;·&amp;nbsp; ~${est} candle ${aTF.toUpperCase()}${note}`;
+  document.getElementById(&#x27;periodInfo2&#x27;).textContent=`${fs} → ${ts} · ${days} hari`;
 }
 function shiftPeriod(dir,unit){
   syncSelects();
   const now=new Date(),cy=now.getFullYear(),cm=now.getMonth()+1;
-  if(unit==='month'){let nm=fromM+dir,ny=fromY;if(nm>12){nm=1;ny++;}if(nm<1){nm=12;ny--;}const e=new Date(ny,nm,0);setFrom(ny,nm,1);setTo(ny,nm,e.getDate());}
+  if(unit===&#x27;month&#x27;){let nm=fromM+dir,ny=fromY;if(nm&gt;12){nm=1;ny++;}if(nm&lt;1){nm=12;ny--;}const e=new Date(ny,nm,0);setFrom(ny,nm,1);setTo(ny,nm,e.getDate());}
   else{const ny=fromY+dir;const em=ny===cy?cm:12,ed=ny===cy?now.getDate():31;setFrom(ny,1,1);setTo(ny,em,ed);}
   updatePreview();clearQB();
 }
@@ -997,25 +1130,25 @@ function setLastN(n){const now=new Date(),f=new Date(now);f.setDate(f.getDate()-
 
 // ═══ PARAMS ═══
 function pick(t,v,el){
-  if(t==='lev'){LEV=v;document.querySelectorAll('#levSeg .sg').forEach(b=>b.classList.remove('on'));}
-  else if(t==='tf'){TF=v;document.querySelectorAll('#tfSeg .sg').forEach(b=>b.classList.remove('on'));updatePreview();}
-  el.classList.add('on');
+  if(t===&#x27;lev&#x27;){LEV=v;document.querySelectorAll(&#x27;#levSeg .sg&#x27;).forEach(b=&gt;b.classList.remove(&#x27;on&#x27;));}
+  else if(t===&#x27;tf&#x27;){TF=v;document.querySelectorAll(&#x27;#tfSeg .sg&#x27;).forEach(b=&gt;b.classList.remove(&#x27;on&#x27;));updatePreview();}
+  el.classList.add(&#x27;on&#x27;);
 }
-function getATF(days){const h=TFH[TF]||1;if(days*24/h<=1000)return TF;if(days<=90)return '1h';if(days<=365)return '4h';return '1d';}
-function setSt(msg,pct){document.getElementById('stTxt').textContent=msg;document.getElementById('pfEl').style.width=pct+'%';document.getElementById('stPct').textContent=Math.round(pct)+'%';}
+function getATF(days){const h=TFH[TF]||1;if(days*24/h&lt;=1000)return TF;if(days&lt;=90)return &#x27;1h&#x27;;if(days&lt;=365)return &#x27;4h&#x27;;return &#x27;1d&#x27;;}
+function setSt(msg,pct){document.getElementById(&#x27;stTxt&#x27;).textContent=msg;document.getElementById(&#x27;pfEl&#x27;).style.width=pct+&#x27;%&#x27;;document.getElementById(&#x27;stPct&#x27;).textContent=Math.round(pct)+&#x27;%&#x27;;}
 
 // ═══ FETCH ═══
 async function fetchData(aTF){
   const days=getDays(),h=TFH[aTF]||1;
   const limit=Math.min(Math.ceil(days*24/h)+30,1000);
   try{
-    const url=`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${aTF}&limit=${limit}&startTime=${getFromTs()}&endTime=${getToTs()}`;
-    const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);
-    const d=await r.json();if(!Array.isArray(d)||d.length<10)throw new Error('data kurang');
-    document.getElementById('dataSource2').textContent=`✓ Binance live · ${d.length} candle · ${aTF.toUpperCase()}`;
-    return{data:d.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]})),isReal:true,tf:aTF};
+    const url=`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&amp;interval=${aTF}&amp;limit=${limit}&amp;startTime=${getFromTs()}&amp;endTime=${getToTs()}`;
+    const r=await fetch(url);if(!r.ok)throw new Error(&#x27;HTTP &#x27;+r.status);
+    const d=await r.json();if(!Array.isArray(d)||d.length&lt;10)throw new Error(&#x27;data kurang&#x27;);
+    document.getElementById(&#x27;dataSource2&#x27;).textContent=`✓ Binance live · ${d.length} candle · ${aTF.toUpperCase()}`;
+    return{data:d.map(k=&gt;({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]})),isReal:true,tf:aTF};
   }catch(e){
-    document.getElementById('dataSource2').textContent=`⚠ Simulasi deterministik (${e.message})`;
+    document.getElementById(&#x27;dataSource2&#x27;).textContent=`⚠ Simulasi deterministik (${e.message})`;
     return{data:genSim(limit,h,getFromTs(),getToTs()),isReal:false,tf:aTF};
   }
 }
@@ -1025,28 +1158,28 @@ function genSim(n,hpc,startMs,endMs){
   let p=92000+(rand()-0.5)*20000;
   const wps=[p,p*(0.8+rand()*0.4),p*(1.1+rand()*0.3),p*(0.85+rand()*0.35),p*(1.1+rand()*0.2)];
   const span=endMs-startMs;
-  return Array.from({length:n},(_,i)=>{
+  return Array.from({length:n},(_,i)=&gt;{
     const fr=i/n,si=Math.floor(fr*(wps.length-1)),sf=fr*(wps.length-1)-si;
     const tgt=wps[si]+(wps[Math.min(si+1,wps.length-1)]-wps[si])*sf;
-    p=Math.max(15000,p+(tgt-p)*0.003+(rand()-0.491)*(hpc<=0.25?0.006:hpc<=1?0.009:hpc<=4?0.014:0.022)*p);
+    p=Math.max(15000,p+(tgt-p)*0.003+(rand()-0.491)*(hpc&lt;=0.25?0.006:hpc&lt;=1?0.009:hpc&lt;=4?0.014:0.022)*p);
     const o=p+(rand()-0.5)*p*0.002,sw=Math.abs(p-o)*2.5+p*0.005;
     return{t:startMs+i*(span/n),o,h:Math.max(o,p)+rand()*sw*.45,l:Math.max(10000,Math.min(o,p)-rand()*sw*.45),c:p,v:20+rand()*300};
   });
 }
 
 // ═══ MATH ═══
-function ema(a,p){const k=2/(p+1);let e=a[0];return a.map((v,i)=>i===0?e:e=v*k+e*(1-k));}
-function sma(a,p){return a.map((_,i)=>i<p?a[i]:a.slice(i-p+1,i+1).reduce((s,x)=>s+x)/p);}
-function stdev(a,p){return a.map((_,i)=>{if(i<p)return a[i]*0.02;const sl=a.slice(i-p+1,i+1),m=sl.reduce((s,x)=>s+x)/p;return Math.sqrt(sl.reduce((s,x)=>s+(x-m)**2,0)/p)||a[i]*0.01;});}
-function atrArr(klines,p=14){const r=new Array(klines.length).fill(0);for(let i=1;i<klines.length;i++){const tr=Math.max(klines[i].h-klines[i].l,Math.abs(klines[i].h-klines[i-1].c),Math.abs(klines[i].l-klines[i-1].c));r[i]=i<=p?tr:(r[i-1]*(p-1)+tr)/p;}return r;}
-function rsiArr(c,p=14){const r=new Array(c.length).fill(50);for(let i=p;i<c.length;i++){let g=0,l=0;for(let j=i-p+1;j<=i;j++){const d=c[j]-c[j-1];if(d>0)g+=d;else l+=Math.abs(d);}r[i]=100-100/(1+g/(l||.001));}return r;}
-function adxCalc(klines,p=14){const n=klines.length,atr=atrArr(klines,p),pDM=new Array(n).fill(0),mDM=new Array(n).fill(0);for(let i=1;i<n;i++){const up=klines[i].h-klines[i-1].h,dn=klines[i-1].l-klines[i].l;pDM[i]=up>dn&&up>0?up:0;mDM[i]=dn>up&&dn>0?dn:0;}const spDM=ema(pDM,p),smDM=ema(mDM,p);const pDI=spDM.map((v,i)=>atr[i]>0?v/atr[i]*100:0),mDI=smDM.map((v,i)=>atr[i]>0?v/atr[i]*100:0);const dx=pDI.map((v,i)=>{const s=v+mDI[i];return s>0?Math.abs(v-mDI[i])/s*100:0;});return{adx:ema(dx,p),pDI,mDI};}
+function ema(a,p){const k=2/(p+1);let e=a[0];return a.map((v,i)=&gt;i===0?e:e=v*k+e*(1-k));}
+function sma(a,p){return a.map((_,i)=&gt;i&lt;p?a[i]:a.slice(i-p+1,i+1).reduce((s,x)=&gt;s+x)/p);}
+function stdev(a,p){return a.map((_,i)=&gt;{if(i&lt;p)return a[i]*0.02;const sl=a.slice(i-p+1,i+1),m=sl.reduce((s,x)=&gt;s+x)/p;return Math.sqrt(sl.reduce((s,x)=&gt;s+(x-m)**2,0)/p)||a[i]*0.01;});}
+function atrArr(klines,p=14){const r=new Array(klines.length).fill(0);for(let i=1;i&lt;klines.length;i++){const tr=Math.max(klines[i].h-klines[i].l,Math.abs(klines[i].h-klines[i-1].c),Math.abs(klines[i].l-klines[i-1].c));r[i]=i&lt;=p?tr:(r[i-1]*(p-1)+tr)/p;}return r;}
+function rsiArr(c,p=14){const r=new Array(c.length).fill(50);for(let i=p;i&lt;c.length;i++){let g=0,l=0;for(let j=i-p+1;j&lt;=i;j++){const d=c[j]-c[j-1];if(d&gt;0)g+=d;else l+=Math.abs(d);}r[i]=100-100/(1+g/(l||.001));}return r;}
+function adxCalc(klines,p=14){const n=klines.length,atr=atrArr(klines,p),pDM=new Array(n).fill(0),mDM=new Array(n).fill(0);for(let i=1;i&lt;n;i++){const up=klines[i].h-klines[i-1].h,dn=klines[i-1].l-klines[i].l;pDM[i]=up&gt;dn&amp;&amp;up&gt;0?up:0;mDM[i]=dn&gt;up&amp;&amp;dn&gt;0?dn:0;}const spDM=ema(pDM,p),smDM=ema(mDM,p);const pDI=spDM.map((v,i)=&gt;atr[i]&gt;0?v/atr[i]*100:0),mDI=smDM.map((v,i)=&gt;atr[i]&gt;0?v/atr[i]*100:0);const dx=pDI.map((v,i)=&gt;{const s=v+mDI[i];return s&gt;0?Math.abs(v-mDI[i])/s*100:0;});return{adx:ema(dx,p),pDI,mDI};}
 
 
 // ═══ ADAPTIVE REGIME STRATEGY ENGINE ═══
 function percentile(arr, p){
   if(!arr.length) return 0;
-  const s=[...arr].sort((a,b)=>a-b);
+  const s=[...arr].sort((a,b)=&gt;a-b);
   const idx=Math.max(0,Math.min(s.length-1,Math.floor((s.length-1)*p)));
   return s[idx];
 }
@@ -1063,94 +1196,94 @@ function lowerWickPct(k){
   return (Math.min(k.o,k.c)-k.l)/range;
 }
 function genAdaptiveSignals(klines, slMult){
-  const mode=document.getElementById('strategyMode')?.value || 'adaptive';
-  const maxTradesDay=parseInt(document.getElementById('maxTradesDay')?.value || '35',10);
-  const c=klines.map(k=>k.c), h=klines.map(k=>k.h), l=klines.map(k=>k.l), v=klines.map(k=>k.v);
+  const mode=document.getElementById(&#x27;strategyMode&#x27;)?.value || &#x27;adaptive&#x27;;
+  const maxTradesDay=parseInt(document.getElementById(&#x27;maxTradesDay&#x27;)?.value || &#x27;35&#x27;,10);
+  const c=klines.map(k=&gt;k.c), h=klines.map(k=&gt;k.h), l=klines.map(k=&gt;k.l), v=klines.map(k=&gt;k.v);
   const atr=atrArr(klines,14), atrSma=sma(atr,50);
   const {adx,pDI,mDI}=adxCalc(klines,14);
   const e20=ema(c,20), e50=ema(c,50), e200=ema(c,200);
   const rsi=rsiArr(c,14);
   const volE=ema(v,20);
   const mid=sma(c,20), sd=stdev(c,20);
-  const upper=mid.map((m,i)=>m+2*sd[i]);
-  const lower=mid.map((m,i)=>m-2*sd[i]);
-  const bbw=upper.map((u,i)=>mid[i]>0?(u-lower[i])/mid[i]:0);
+  const upper=mid.map((m,i)=&gt;m+2*sd[i]);
+  const lower=mid.map((m,i)=&gt;m-2*sd[i]);
+  const bbw=upper.map((u,i)=&gt;mid[i]&gt;0?(u-lower[i])/mid[i]:0);
   const bwMed=percentile(bbw.slice(50),0.5) || 0.04;
 
   const sigs=[];
   const tradesByDay={};
   const minIdx=Math.min(240,Math.floor(klines.length*0.30));
-  for(let i=minIdx;i<klines.length-1;i++){
+  for(let i=minIdx;i&lt;klines.length-1;i++){
     const k=klines[i], prev=klines[i-1];
     const day=new Date(klines[i+1].t).toLocaleDateString();
     if(!tradesByDay[day]) tradesByDay[day]=0;
-    if(tradesByDay[day]>=maxTradesDay) continue;
+    if(tradesByDay[day]&gt;=maxTradesDay) continue;
 
     const a=atr[i], aS=atrSma[i]||a;
     const price=c[i], nextOpen=klines[i+1].o;
     const adxV=adx[i]||0;
-    const volOK=v[i] > volE[i]*0.85;
-    const volSpike=v[i] > volE[i]*1.15;
+    const volOK=v[i] &gt; volE[i]*0.85;
+    const volSpike=v[i] &gt; volE[i]*1.15;
     const rangePct=a/price;
-    const highVol=a > aS*1.55 || rangePct>0.018;
-    const lowVol=a < aS*0.55 || rangePct<0.0025;
-    const strictMode=mode==='strict';
-    const chop=(adxV<8 && bbw[i]<bwMed*0.45) || (strictMode && bodyPct(k)<0.18);
-    if((strictMode && lowVol) || chop) continue;
+    const highVol=a &gt; aS*1.55 || rangePct&gt;0.018;
+    const lowVol=a &lt; aS*0.55 || rangePct&lt;0.0025;
+    const strictMode=mode===&#x27;strict&#x27;;
+    const chop=(adxV&lt;8 &amp;&amp; bbw[i]&lt;bwMed*0.45) || (strictMode &amp;&amp; bodyPct(k)&lt;0.18);
+    if((strictMode &amp;&amp; lowVol) || chop) continue;
 
-    const bullTrend=price>e200[i] && e50[i]>e200[i] && pDI[i]>mDI[i];
-    const bearTrend=price<e200[i] && e50[i]<e200[i] && mDI[i]>pDI[i];
-    const trending=adxV>15;
-    const ranging=adxV<28 && bbw[i] <= bwMed*2.10;
+    const bullTrend=price&gt;e200[i] &amp;&amp; e50[i]&gt;e200[i] &amp;&amp; pDI[i]&gt;mDI[i];
+    const bearTrend=price&lt;e200[i] &amp;&amp; e50[i]&lt;e200[i] &amp;&amp; mDI[i]&gt;pDI[i];
+    const trending=adxV&gt;15;
+    const ranging=adxV&lt;28 &amp;&amp; bbw[i] &lt;= bwMed*2.10;
 
-    let sig='WAIT', label='', regime='', score=0, tpR=1.5, slM=slMult, levHint=LEV;
+    let sig=&#x27;WAIT&#x27;, label=&#x27;&#x27;, regime=&#x27;&#x27;, score=0, tpR=1.5, slM=slMult, levHint=LEV;
 
     // Trend continuation: lebih selektif, bukan EMA cross telat
-    const brokeHigh=k.c>Math.max(...h.slice(Math.max(0,i-8),i));
-    const brokeLow=k.c<Math.min(...l.slice(Math.max(0,i-8),i));
-    const pullBuy=prev.l<=e20[i-1] && k.c>e20[i] && k.c>k.o;
-    const pullSell=prev.h>=e20[i-1] && k.c<e20[i] && k.c<k.o;
+    const brokeHigh=k.c&gt;Math.max(...h.slice(Math.max(0,i-8),i));
+    const brokeLow=k.c&lt;Math.min(...l.slice(Math.max(0,i-8),i));
+    const pullBuy=prev.l&lt;=e20[i-1] &amp;&amp; k.c&gt;e20[i] &amp;&amp; k.c&gt;k.o;
+    const pullSell=prev.h&gt;=e20[i-1] &amp;&amp; k.c&lt;e20[i] &amp;&amp; k.c&lt;k.o;
 
-    if(mode!=='range' && trending){
-      if(bullTrend && (pullBuy || brokeHigh) && rsi[i]>45 && rsi[i]<76 && (volOK || !strictMode)){
-        sig='BUY'; label=pullBuy?'Trend Pullback↑':'Trend Breakout↑'; regime='TREND'; score=7; tpR=1.45; slM=1.05; levHint=6;
-      }else if(bearTrend && (pullSell || brokeLow) && rsi[i]<55 && rsi[i]>24 && (volOK || !strictMode)){
-        sig='SELL'; label=pullSell?'Trend Pullback↓':'Trend Breakout↓'; regime='TREND'; score=7; tpR=1.45; slM=1.05; levHint=6;
+    if(mode!==&#x27;range&#x27; &amp;&amp; trending){
+      if(bullTrend &amp;&amp; (pullBuy || brokeHigh) &amp;&amp; rsi[i]&gt;45 &amp;&amp; rsi[i]&lt;76 &amp;&amp; (volOK || !strictMode)){
+        sig=&#x27;BUY&#x27;; label=pullBuy?&#x27;Trend Pullback↑&#x27;:&#x27;Trend Breakout↑&#x27;; regime=&#x27;TREND&#x27;; score=7; tpR=1.45; slM=1.05; levHint=6;
+      }else if(bearTrend &amp;&amp; (pullSell || brokeLow) &amp;&amp; rsi[i]&lt;55 &amp;&amp; rsi[i]&gt;24 &amp;&amp; (volOK || !strictMode)){
+        sig=&#x27;SELL&#x27;; label=pullSell?&#x27;Trend Pullback↓&#x27;:&#x27;Trend Breakout↓&#x27;; regime=&#x27;TREND&#x27;; score=7; tpR=1.45; slM=1.05; levHint=6;
       }
     }
 
     // Range mean reversion: cari rejection ekstrem
-    const buyReject=k.l<lower[i]*1.002 && k.c>lower[i] && lowerWickPct(k)>0.24 && rsi[i]<43;
-    const sellReject=k.h>upper[i]*0.998 && k.c<upper[i] && upperWickPct(k)>0.24 && rsi[i]>57;
-    if(sig==='WAIT' && mode!=='trend' && ranging){
-      if(buyReject && (volOK || !strictMode)){
-        sig='BUY'; label='Range Reversal↑'; regime='RANGE'; score=6; tpR=0.95; slM=0.9; levHint=3;
-      }else if(sellReject && (volOK || !strictMode)){
-        sig='SELL'; label='Range Reversal↓'; regime='RANGE'; score=6; tpR=0.95; slM=0.9; levHint=3;
+    const buyReject=k.l&lt;lower[i]*1.002 &amp;&amp; k.c&gt;lower[i] &amp;&amp; lowerWickPct(k)&gt;0.24 &amp;&amp; rsi[i]&lt;43;
+    const sellReject=k.h&gt;upper[i]*0.998 &amp;&amp; k.c&lt;upper[i] &amp;&amp; upperWickPct(k)&gt;0.24 &amp;&amp; rsi[i]&gt;57;
+    if(sig===&#x27;WAIT&#x27; &amp;&amp; mode!==&#x27;trend&#x27; &amp;&amp; ranging){
+      if(buyReject &amp;&amp; (volOK || !strictMode)){
+        sig=&#x27;BUY&#x27;; label=&#x27;Range Reversal↑&#x27;; regime=&#x27;RANGE&#x27;; score=6; tpR=0.95; slM=0.9; levHint=3;
+      }else if(sellReject &amp;&amp; (volOK || !strictMode)){
+        sig=&#x27;SELL&#x27;; label=&#x27;Range Reversal↓&#x27;; regime=&#x27;RANGE&#x27;; score=6; tpR=0.95; slM=0.9; levHint=3;
       }
     }
 
     // Micro scalp fallback: mengisi bulan yang terlalu sepi, tetap pakai filter arah EMA200
-    if(sig==='WAIT' && mode==='adaptive' && !highVol && adxV>14 && bodyPct(k)>0.28 && v[i] > volE[i]*0.75){
-      const bounceBuy=price>e200[i] && k.c>k.o && k.l<=e20[i] && rsi[i]>42 && rsi[i]<68;
-      const bounceSell=price<e200[i] && k.c<k.o && k.h>=e20[i] && rsi[i]<58 && rsi[i]>32;
+    if(sig===&#x27;WAIT&#x27; &amp;&amp; mode===&#x27;adaptive&#x27; &amp;&amp; !highVol &amp;&amp; adxV&gt;14 &amp;&amp; bodyPct(k)&gt;0.28 &amp;&amp; v[i] &gt; volE[i]*0.75){
+      const bounceBuy=price&gt;e200[i] &amp;&amp; k.c&gt;k.o &amp;&amp; k.l&lt;=e20[i] &amp;&amp; rsi[i]&gt;42 &amp;&amp; rsi[i]&lt;68;
+      const bounceSell=price&lt;e200[i] &amp;&amp; k.c&lt;k.o &amp;&amp; k.h&gt;=e20[i] &amp;&amp; rsi[i]&lt;58 &amp;&amp; rsi[i]&gt;32;
       if(bounceBuy){
-        sig='BUY'; label='Active Scalp↑'; regime='SCALP'; score=5; tpR=0.85; slM=0.85; levHint=4;
+        sig=&#x27;BUY&#x27;; label=&#x27;Active Scalp↑&#x27;; regime=&#x27;SCALP&#x27;; score=5; tpR=0.85; slM=0.85; levHint=4;
       }else if(bounceSell){
-        sig='SELL'; label='Active Scalp↓'; regime='SCALP'; score=5; tpR=0.85; slM=0.85; levHint=4;
+        sig=&#x27;SELL&#x27;; label=&#x27;Active Scalp↓&#x27;; regime=&#x27;SCALP&#x27;; score=5; tpR=0.85; slM=0.85; levHint=4;
       }
     }
 
     // High volatility: hanya ikut momentum kuat dan size/leverage rendah
-    if(sig==='WAIT' && highVol && adxV>24 && volSpike && bodyPct(k)>0.45){
-      if(bullTrend && k.c>k.o && rsi[i]>55 && rsi[i]<78){
-        sig='BUY'; label='Vol Momentum↑'; regime='HIGH VOL'; score=6; tpR=1.05; slM=1.25; levHint=2;
-      }else if(bearTrend && k.c<k.o && rsi[i]<45 && rsi[i]>22){
-        sig='SELL'; label='Vol Momentum↓'; regime='HIGH VOL'; score=6; tpR=1.05; slM=1.25; levHint=2;
+    if(sig===&#x27;WAIT&#x27; &amp;&amp; highVol &amp;&amp; adxV&gt;24 &amp;&amp; volSpike &amp;&amp; bodyPct(k)&gt;0.45){
+      if(bullTrend &amp;&amp; k.c&gt;k.o &amp;&amp; rsi[i]&gt;55 &amp;&amp; rsi[i]&lt;78){
+        sig=&#x27;BUY&#x27;; label=&#x27;Vol Momentum↑&#x27;; regime=&#x27;HIGH VOL&#x27;; score=6; tpR=1.05; slM=1.25; levHint=2;
+      }else if(bearTrend &amp;&amp; k.c&lt;k.o &amp;&amp; rsi[i]&lt;45 &amp;&amp; rsi[i]&gt;22){
+        sig=&#x27;SELL&#x27;; label=&#x27;Vol Momentum↓&#x27;; regime=&#x27;HIGH VOL&#x27;; score=6; tpR=1.05; slM=1.25; levHint=2;
       }
     }
 
-    if(sig==='WAIT') continue;
+    if(sig===&#x27;WAIT&#x27;) continue;
 
     const slDist=a*slM;
     const tpDist=slDist*tpR;
@@ -1164,8 +1297,8 @@ function genAdaptiveSignals(klines, slMult){
       atr:a,
       slDist,
       tpDist,
-      tpP:sig==='BUY'?ep+tpDist:ep-tpDist,
-      slP:sig==='BUY'?ep-slDist:ep+slDist,
+      tpP:sig===&#x27;BUY&#x27;?ep+tpDist:ep-tpDist,
+      slP:sig===&#x27;BUY&#x27;?ep-slDist:ep+slDist,
       label:`${label} · ${regime}`,
       score,
       regime,
@@ -1178,99 +1311,99 @@ function genAdaptiveSignals(klines, slMult){
 
 // ═══ SIGNAL ENGINE ═══
 function genSignals(klines,slMult){
-  const c=klines.map(k=>k.c),h=klines.map(k=>k.h),l=klines.map(k=>k.l),v=klines.map(k=>k.v);
+  const c=klines.map(k=&gt;k.c),h=klines.map(k=&gt;k.h),l=klines.map(k=&gt;k.l),v=klines.map(k=&gt;k.v);
   const atr=atrArr(klines,14),atrSma=sma(atr,20);
   const{adx,pDI,mDI}=adxCalc(klines,14);
   const e9=ema(c,9),e21=ema(c,21),e55=ema(c,55),e200=ema(c,200);
   const rsi=rsiArr(c,14);
-  const macdL=ema(c,12).map((x,i)=>x-ema(c,26)[i]),macdS=ema(macdL,9),macdH=macdL.map((x,i)=>x-macdS[i]);
-  const bm=sma(c,20),bs=stdev(c,20),bu=bm.map((m,i)=>m+2*bs[i]),bd2=bm.map((m,i)=>m-2*bs[i]);
-  const bw=bu.map((u,i)=>bm[i]>0?(u-bd2[i])/bm[i]:0.04),bwSma=sma(bw,30);
+  const macdL=ema(c,12).map((x,i)=&gt;x-ema(c,26)[i]),macdS=ema(macdL,9),macdH=macdL.map((x,i)=&gt;x-macdS[i]);
+  const bm=sma(c,20),bs=stdev(c,20),bu=bm.map((m,i)=&gt;m+2*bs[i]),bd2=bm.map((m,i)=&gt;m-2*bs[i]);
+  const bw=bu.map((u,i)=&gt;bm[i]&gt;0?(u-bd2[i])/bm[i]:0.04),bwSma=sma(bw,30);
   const vEma=ema(v,20);
-  const hl2=klines.map(k=>(k.h+k.l)/2),atr10=atrArr(klines,10);
-  let stDir=new Array(c.length).fill(1),fU=hl2.map((m,i)=>m+3*atr10[i]),fL=hl2.map((m,i)=>m-3*atr10[i]);
-  for(let i=1;i<c.length;i++){fU[i]=fU[i]<fU[i-1]||c[i-1]>fU[i-1]?fU[i]:fU[i-1];fL[i]=fL[i]>fL[i-1]||c[i-1]<fL[i-1]?fL[i]:fL[i-1];stDir[i]=c[i]>fU[i-1]?1:c[i]<fL[i-1]?-1:stDir[i-1];}
-  const dcH=c.map((_,i)=>i<20?h[i]:Math.max(...h.slice(i-20,i)));
-  const dcL=c.map((_,i)=>i<20?l[i]:Math.min(...l.slice(i-20,i)));
+  const hl2=klines.map(k=&gt;(k.h+k.l)/2),atr10=atrArr(klines,10);
+  let stDir=new Array(c.length).fill(1),fU=hl2.map((m,i)=&gt;m+3*atr10[i]),fL=hl2.map((m,i)=&gt;m-3*atr10[i]);
+  for(let i=1;i&lt;c.length;i++){fU[i]=fU[i]&lt;fU[i-1]||c[i-1]&gt;fU[i-1]?fU[i]:fU[i-1];fL[i]=fL[i]&gt;fL[i-1]||c[i-1]&lt;fL[i-1]?fL[i]:fL[i-1];stDir[i]=c[i]&gt;fU[i-1]?1:c[i]&lt;fL[i-1]?-1:stDir[i-1];}
+  const dcH=c.map((_,i)=&gt;i&lt;20?h[i]:Math.max(...h.slice(i-20,i)));
+  const dcL=c.map((_,i)=&gt;i&lt;20?l[i]:Math.min(...l.slice(i-20,i)));
   const minIdx=Math.min(210,Math.floor(klines.length*0.25));
   const sigs=[];
-  for(let i=minIdx;i<klines.length-1;i++){
+  for(let i=minIdx;i&lt;klines.length-1;i++){
     const a=atr[i],aSma=atrSma[i];
-    if(a>aSma*1.8||v[i]<vEma[i]*0.4)continue;
+    if(a&gt;aSma*1.8||v[i]&lt;vEma[i]*0.4)continue;
     const price=c[i],nextOpen=klines[i+1].o;
-    const adxV=adx[i]||0,trending=adxV>25,ranging=adxV<18;
-    const bullM=pDI[i]>mDI[i],bearM=mDI[i]>pDI[i];
+    const adxV=adx[i]||0,trending=adxV&gt;25,ranging=adxV&lt;18;
+    const bullM=pDI[i]&gt;mDI[i],bearM=mDI[i]&gt;pDI[i];
     const stB=stDir[i]===1,stBr=stDir[i]===-1;
-    const stFB=stDir[i]===1&&stDir[i-1]===-1,stFBr=stDir[i]===-1&&stDir[i-1]===1;
-    const mBull=macdH[i]>0&&macdH[i]>macdH[i-1],mBear=macdH[i]<0&&macdH[i]<macdH[i-1];
-    const mCU=macdH[i]>0&&macdH[i-1]<=0,mCD=macdH[i]<0&&macdH[i-1]>=0;
-    const rOkB=rsi[i]>38&&rsi[i]<72,rOkS=rsi[i]<62&&rsi[i]>28;
-    const e9xU=e9[i]>e21[i]&&e9[i-1]<=e21[i-1],e9xD=e9[i]<e21[i]&&e9[i-1]>=e21[i-1];
-    const bullR=e9[i]>e21[i]&&e21[i]>e55[i],bearR=e9[i]<e21[i]&&e21[i]<e55[i];
-    const ab200=c[i]>e200[i],bl200=c[i]<e200[i];
-    const vSp=v[i]>vEma[i]*1.4,vSt=v[i]>vEma[i]*1.2;
-    const sq=bw[i]<bwSma[i]*0.75,psq=i>0&&bw[i-1]<bwSma[i-1]*0.75;
-    let sig='WAIT',label='',score=0;
-    if(stFB&&trending&&bullM&&mBull&&rOkB&&ab200){score=7;sig='BUY';label='ST Cross↑';}
-    else if(stFBr&&trending&&bearM&&mBear&&rOkS&&bl200){score=7;sig='SELL';label='ST Cross↓';}
-    if(sig==='WAIT'&&e9xU&&mCU&&trending&&bullM&&rOkB&&vSt){score=6;sig='BUY';label='EMA+MACD↑';}
-    else if(sig==='WAIT'&&e9xD&&mCD&&trending&&bearM&&rOkS&&vSt){score=6;sig='SELL';label='EMA+MACD↓';}
-    if(sig==='WAIT'&&(psq||sq)){if(c[i]>bu[i-1]&&vSp&&mBull&&rOkB&&stB){score=6;sig='BUY';label='BB Squeeze↑';}else if(c[i]<bd2[i-1]&&vSp&&mBear&&rOkS&&stBr){score=6;sig='SELL';label='BB Squeeze↓';}}
-    if(sig==='WAIT'&&c[i]>dcH[i-1]&&vSp&&stB&&bullR&&mBull&&ab200&&rOkB){score=6;sig='BUY';label='DC Break↑';}
-    else if(sig==='WAIT'&&c[i]<dcL[i-1]&&vSp&&stBr&&bearR&&mBear&&bl200&&rOkS){score=6;sig='SELL';label='DC Break↓';}
-    if(sig==='WAIT'&&trending){if(c[i-1]<e21[i-1]&&c[i]>e21[i]&&bullR&&stB&&rsi[i]>50&&mBull&&ab200&&v[i]>vEma[i]){score=5;sig='BUY';label='Pullback↑';}else if(c[i-1]>e21[i-1]&&c[i]<e21[i]&&bearR&&stBr&&rsi[i]<50&&mBear&&bl200&&v[i]>vEma[i]){score=5;sig='SELL';label='Pullback↓';}}
-    if(sig==='WAIT'&&ranging&&a<aSma*1.2){const eOS=rsi[i]<28&&c[i]<bd2[i]&&c[i]>klines[i].o&&v[i]>vEma[i]*1.5;const eOB=rsi[i]>72&&c[i]>bu[i]&&c[i]<klines[i].o&&v[i]>vEma[i]*1.5;if(eOS){score=5;sig='BUY';label='RSI Div↑';}else if(eOB){score=5;sig='SELL';label='RSI Div↓';}}
-    if(sig==='WAIT'||score<5)continue;
+    const stFB=stDir[i]===1&amp;&amp;stDir[i-1]===-1,stFBr=stDir[i]===-1&amp;&amp;stDir[i-1]===1;
+    const mBull=macdH[i]&gt;0&amp;&amp;macdH[i]&gt;macdH[i-1],mBear=macdH[i]&lt;0&amp;&amp;macdH[i]&lt;macdH[i-1];
+    const mCU=macdH[i]&gt;0&amp;&amp;macdH[i-1]&lt;=0,mCD=macdH[i]&lt;0&amp;&amp;macdH[i-1]&gt;=0;
+    const rOkB=rsi[i]&gt;38&amp;&amp;rsi[i]&lt;72,rOkS=rsi[i]&lt;62&amp;&amp;rsi[i]&gt;28;
+    const e9xU=e9[i]&gt;e21[i]&amp;&amp;e9[i-1]&lt;=e21[i-1],e9xD=e9[i]&lt;e21[i]&amp;&amp;e9[i-1]&gt;=e21[i-1];
+    const bullR=e9[i]&gt;e21[i]&amp;&amp;e21[i]&gt;e55[i],bearR=e9[i]&lt;e21[i]&amp;&amp;e21[i]&lt;e55[i];
+    const ab200=c[i]&gt;e200[i],bl200=c[i]&lt;e200[i];
+    const vSp=v[i]&gt;vEma[i]*1.4,vSt=v[i]&gt;vEma[i]*1.2;
+    const sq=bw[i]&lt;bwSma[i]*0.75,psq=i&gt;0&amp;&amp;bw[i-1]&lt;bwSma[i-1]*0.75;
+    let sig=&#x27;WAIT&#x27;,label=&#x27;&#x27;,score=0;
+    if(stFB&amp;&amp;trending&amp;&amp;bullM&amp;&amp;mBull&amp;&amp;rOkB&amp;&amp;ab200){score=7;sig=&#x27;BUY&#x27;;label=&#x27;ST Cross↑&#x27;;}
+    else if(stFBr&amp;&amp;trending&amp;&amp;bearM&amp;&amp;mBear&amp;&amp;rOkS&amp;&amp;bl200){score=7;sig=&#x27;SELL&#x27;;label=&#x27;ST Cross↓&#x27;;}
+    if(sig===&#x27;WAIT&#x27;&amp;&amp;e9xU&amp;&amp;mCU&amp;&amp;trending&amp;&amp;bullM&amp;&amp;rOkB&amp;&amp;vSt){score=6;sig=&#x27;BUY&#x27;;label=&#x27;EMA+MACD↑&#x27;;}
+    else if(sig===&#x27;WAIT&#x27;&amp;&amp;e9xD&amp;&amp;mCD&amp;&amp;trending&amp;&amp;bearM&amp;&amp;rOkS&amp;&amp;vSt){score=6;sig=&#x27;SELL&#x27;;label=&#x27;EMA+MACD↓&#x27;;}
+    if(sig===&#x27;WAIT&#x27;&amp;&amp;(psq||sq)){if(c[i]&gt;bu[i-1]&amp;&amp;vSp&amp;&amp;mBull&amp;&amp;rOkB&amp;&amp;stB){score=6;sig=&#x27;BUY&#x27;;label=&#x27;BB Squeeze↑&#x27;;}else if(c[i]&lt;bd2[i-1]&amp;&amp;vSp&amp;&amp;mBear&amp;&amp;rOkS&amp;&amp;stBr){score=6;sig=&#x27;SELL&#x27;;label=&#x27;BB Squeeze↓&#x27;;}}
+    if(sig===&#x27;WAIT&#x27;&amp;&amp;c[i]&gt;dcH[i-1]&amp;&amp;vSp&amp;&amp;stB&amp;&amp;bullR&amp;&amp;mBull&amp;&amp;ab200&amp;&amp;rOkB){score=6;sig=&#x27;BUY&#x27;;label=&#x27;DC Break↑&#x27;;}
+    else if(sig===&#x27;WAIT&#x27;&amp;&amp;c[i]&lt;dcL[i-1]&amp;&amp;vSp&amp;&amp;stBr&amp;&amp;bearR&amp;&amp;mBear&amp;&amp;bl200&amp;&amp;rOkS){score=6;sig=&#x27;SELL&#x27;;label=&#x27;DC Break↓&#x27;;}
+    if(sig===&#x27;WAIT&#x27;&amp;&amp;trending){if(c[i-1]&lt;e21[i-1]&amp;&amp;c[i]&gt;e21[i]&amp;&amp;bullR&amp;&amp;stB&amp;&amp;rsi[i]&gt;50&amp;&amp;mBull&amp;&amp;ab200&amp;&amp;v[i]&gt;vEma[i]){score=5;sig=&#x27;BUY&#x27;;label=&#x27;Pullback↑&#x27;;}else if(c[i-1]&gt;e21[i-1]&amp;&amp;c[i]&lt;e21[i]&amp;&amp;bearR&amp;&amp;stBr&amp;&amp;rsi[i]&lt;50&amp;&amp;mBear&amp;&amp;bl200&amp;&amp;v[i]&gt;vEma[i]){score=5;sig=&#x27;SELL&#x27;;label=&#x27;Pullback↓&#x27;;}}
+    if(sig===&#x27;WAIT&#x27;&amp;&amp;ranging&amp;&amp;a&lt;aSma*1.2){const eOS=rsi[i]&lt;28&amp;&amp;c[i]&lt;bd2[i]&amp;&amp;c[i]&gt;klines[i].o&amp;&amp;v[i]&gt;vEma[i]*1.5;const eOB=rsi[i]&gt;72&amp;&amp;c[i]&gt;bu[i]&amp;&amp;c[i]&lt;klines[i].o&amp;&amp;v[i]&gt;vEma[i]*1.5;if(eOS){score=5;sig=&#x27;BUY&#x27;;label=&#x27;RSI Div↑&#x27;;}else if(eOB){score=5;sig=&#x27;SELL&#x27;;label=&#x27;RSI Div↓&#x27;;}}
+    if(sig===&#x27;WAIT&#x27;||score&lt;5)continue;
     const slDist=a*slMult,tpDist=slDist*2,ep=nextOpen;
     sigs.push({i:i+1,sig,price:ep,date:new Date(klines[i+1].t),atr:a,slDist,tpDist,
-      tpP:sig==='BUY'?ep+tpDist:ep-tpDist,slP:sig==='BUY'?ep-slDist:ep+slDist,label,score});
+      tpP:sig===&#x27;BUY&#x27;?ep+tpDist:ep-tpDist,slP:sig===&#x27;BUY&#x27;?ep-slDist:ep+slDist,label,score});
   }
   return sigs;
 }
 
 // ═══ SIMULATE ═══
 function simulate(klines,sigs,cap,riskPct,lev){
-  const autoLevOn=(document.getElementById('autoLev')?.value||'on')==='on';
-  const dailyStopR=parseFloat(document.getElementById('dailyStopR')?.value||'3');
+  const autoLevOn=(document.getElementById(&#x27;autoLev&#x27;)?.value||&#x27;on&#x27;)===&#x27;on&#x27;;
+  const dailyStopR=parseFloat(document.getElementById(&#x27;dailyStopR&#x27;)?.value||&#x27;3&#x27;);
   let eq=cap,peak=cap,maxDD=0,wins=0,losses=0,trails=0,liqs=0,totalFee=0,gp=0,gl=0;
-  const trades=[],eqC=[cap],eqL=['Start'];
-  let inT=false,entry=0,eDir='',stake=0,eDate=null,eI=0,currentLev=lev;
-  let tpP=0,slP=0,slDist=0,eLabel='',trailActive=false,trailSL=0;
+  const trades=[],eqC=[cap],eqL=[&#x27;Start&#x27;];
+  let inT=false,entry=0,eDir=&#x27;&#x27;,stake=0,eDate=null,eI=0,currentLev=lev;
+  let tpP=0,slP=0,slDist=0,eLabel=&#x27;&#x27;,trailActive=false,trailSL=0;
   let liqThr=0.9/lev; const hpc=TFH[TF]||1;
-  let dailyLoss=0,lastDay='';
-  for(let si=0;si<sigs.length;si++){
+  let dailyLoss=0,lastDay=&#x27;&#x27;;
+  for(let si=0;si&lt;sigs.length;si++){
     const sg=sigs[si],{sig,price,date,i,tpP:tp,slP:sl,label}=sg;
     const dk=date.toLocaleDateString();
     if(dk!==lastDay){dailyLoss=0;lastDay=dk;}
     if(inT){
-      const raw=eDir==='BUY'?(price-entry)/entry:(entry-price)/entry;
+      const raw=eDir===&#x27;BUY&#x27;?(price-entry)/entry:(entry-price)/entry;
       const levP=raw*currentLev,hrs=(i-eI)*hpc;
       const fCost=stake*FUND*Math.floor(Math.max(0,hrs)/8);
-      const moved=eDir==='BUY'?price-entry:entry-price;
-      if(!trailActive&&moved>=slDist){trailActive=true;trailSL=eDir==='BUY'?entry+slDist*.1:entry-slDist*.1;}
-      if(trailActive){const ns=eDir==='BUY'?price-slDist:price+slDist;if(eDir==='BUY'&&ns>trailSL)trailSL=ns;if(eDir==='SELL'&&ns<trailSL)trailSL=ns;}
+      const moved=eDir===&#x27;BUY&#x27;?price-entry:entry-price;
+      if(!trailActive&amp;&amp;moved&gt;=slDist){trailActive=true;trailSL=eDir===&#x27;BUY&#x27;?entry+slDist*.1:entry-slDist*.1;}
+      if(trailActive){const ns=eDir===&#x27;BUY&#x27;?price-slDist:price+slDist;if(eDir===&#x27;BUY&#x27;&amp;&amp;ns&gt;trailSL)trailSL=ns;if(eDir===&#x27;SELL&#x27;&amp;&amp;ns&lt;trailSL)trailSL=ns;}
       const aSL=trailActive?trailSL:sl;
-      const hitTP=eDir==='BUY'?price>=tpP:price<=tpP;
-      const hitSL=eDir==='BUY'?price<=aSL:price>=aSL;
-      const hitLiq=raw<=-liqThr;
-      let done=false,reason='',netPnl=0;
-      if(hitLiq){done=true;reason='LIQ';netPnl=-stake;liqs++;}
-      else if(hitTP){done=true;reason='TP';const pct=eDir==='BUY'?(tpP-entry)/entry:(entry-tpP)/entry;netPnl=stake*pct*currentLev-fCost-stake*currentLev*FM;}
-      else if(hitSL){done=true;reason=trailActive?'TRAIL':'SL';const ep2=aSL;const pct=eDir==='BUY'?(ep2-entry)/entry:(entry-ep2)/entry;netPnl=stake*pct*currentLev-fCost-stake*currentLev*FT;if(trailActive)trails++;}
-      else if(si===sigs.length-1){done=true;reason='END';netPnl=stake*levP-fCost-stake*currentLev*FT;}
+      const hitTP=eDir===&#x27;BUY&#x27;?price&gt;=tpP:price&lt;=tpP;
+      const hitSL=eDir===&#x27;BUY&#x27;?price&lt;=aSL:price&gt;=aSL;
+      const hitLiq=raw&lt;=-liqThr;
+      let done=false,reason=&#x27;&#x27;,netPnl=0;
+      if(hitLiq){done=true;reason=&#x27;LIQ&#x27;;netPnl=-stake;liqs++;}
+      else if(hitTP){done=true;reason=&#x27;TP&#x27;;const pct=eDir===&#x27;BUY&#x27;?(tpP-entry)/entry:(entry-tpP)/entry;netPnl=stake*pct*currentLev-fCost-stake*currentLev*FM;}
+      else if(hitSL){done=true;reason=trailActive?&#x27;TRAIL&#x27;:&#x27;SL&#x27;;const ep2=aSL;const pct=eDir===&#x27;BUY&#x27;?(ep2-entry)/entry:(entry-ep2)/entry;netPnl=stake*pct*currentLev-fCost-stake*currentLev*FT;if(trailActive)trails++;}
+      else if(si===sigs.length-1){done=true;reason=&#x27;END&#x27;;netPnl=stake*levP-fCost-stake*currentLev*FT;}
       if(!done)continue;
-      totalFee+=fCost+(reason==='TP'?stake*currentLev*FM:stake*currentLev*FT);
-      eq=Math.max(0,eq+netPnl);if(eq>peak)peak=eq;
-      const dd=(peak-eq)/peak*100;if(dd>maxDD)maxDD=dd;
-      if(netPnl>0){wins++;gp+=netPnl;}else{losses++;gl+=Math.abs(netPnl);}
-      if(netPnl<0)dailyLoss+=Math.abs(netPnl);
-      const fmtO=hpc<1?{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}:hpc<=4?{month:'short',day:'numeric',hour:'2-digit'}:{month:'short',day:'numeric'};
-      trades.push({idx:trades.length+1,sig:eDir,entry,exit:price,tpP,slP:sl,pnl:parseFloat(netPnl.toFixed(4)),equity:parseFloat(eq.toFixed(4)),entryDate:eDate,exitDate:date,reason,label:eLabel,lev:currentLev,regime:(sigs[Math.max(0,si-1)]?.regime||'')});
-      eqC.push(parseFloat(eq.toFixed(4)));eqL.push(date.toLocaleString('id-ID',fmtO));
-      inT=false;trailActive=false;if(eq<0.01)break;
+      totalFee+=fCost+(reason===&#x27;TP&#x27;?stake*currentLev*FM:stake*currentLev*FT);
+      eq=Math.max(0,eq+netPnl);if(eq&gt;peak)peak=eq;
+      const dd=(peak-eq)/peak*100;if(dd&gt;maxDD)maxDD=dd;
+      if(netPnl&gt;0){wins++;gp+=netPnl;}else{losses++;gl+=Math.abs(netPnl);}
+      if(netPnl&lt;0)dailyLoss+=Math.abs(netPnl);
+      const fmtO=hpc&lt;1?{month:&#x27;short&#x27;,day:&#x27;numeric&#x27;,hour:&#x27;2-digit&#x27;,minute:&#x27;2-digit&#x27;}:hpc&lt;=4?{month:&#x27;short&#x27;,day:&#x27;numeric&#x27;,hour:&#x27;2-digit&#x27;}:{month:&#x27;short&#x27;,day:&#x27;numeric&#x27;};
+      trades.push({idx:trades.length+1,sig:eDir,entry,exit:price,tpP,slP:sl,pnl:parseFloat(netPnl.toFixed(4)),equity:parseFloat(eq.toFixed(4)),entryDate:eDate,exitDate:date,reason,label:eLabel,lev:currentLev,regime:(sigs[Math.max(0,si-1)]?.regime||&#x27;&#x27;)});
+      eqC.push(parseFloat(eq.toFixed(4)));eqL.push(date.toLocaleString(&#x27;id-ID&#x27;,fmtO));
+      inT=false;trailActive=false;if(eq&lt;0.01)break;
     }
-    if(dailyLoss>=eq*riskPct*dailyStopR)continue;
-    if(!inT&&sig!=='WAIT'&&eq>0.01){
+    if(dailyLoss&gt;=eq*riskPct*dailyStopR)continue;
+    if(!inT&amp;&amp;sig!==&#x27;WAIT&#x27;&amp;&amp;eq&gt;0.01){
       currentLev=autoLevOn?(sg.levHint||lev):lev;
       liqThr=0.9/currentLev;
       inT=true;entry=price;eDir=sig;
@@ -1281,10 +1414,10 @@ function simulate(klines,sigs,cap,riskPct,lev){
     }
   }
   const total=wins+losses,days=getDays();
-  let maxL=0,curL=0;trades.forEach(t=>{if(t.pnl<0){curL++;if(curL>maxL)maxL=curL;}else curL=0;});
+  let maxL=0,curL=0;trades.forEach(t=&gt;{if(t.pnl&lt;0){curL++;if(curL&gt;maxL)maxL=curL;}else curL=0;});
   return{eq,cap,wins,losses,trails,liqs,total,gp,gl,totalFee,maxDD,
-    wr:total>0?wins/total*100:0,pf:gl>0?gp/gl:gp>0?99:0,
-    avgW:wins>0?gp/wins:0,avgL:losses>0?gl/losses:0,
+    wr:total&gt;0?wins/total*100:0,pf:gl&gt;0?gp/gl:gp&gt;0?99:0,
+    avgW:wins&gt;0?gp/wins:0,avgL:losses&gt;0?gl/losses:0,
     exp:(gp-gl)/(total||1),tpd:total/Math.max(1,days),days,maxL,trades,eqC,eqL};
 }
 
@@ -1292,178 +1425,178 @@ function simulate(klines,sigs,cap,riskPct,lev){
 function dc(k){if(charts[k]){charts[k].destroy();charts[k]=null;}}
 const CHART_OPTS={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
 function renderEq(res,title){
-  dc('eq');document.getElementById('eqTitle').textContent=title;
-  const col=res.eq>=res.cap?'#16a34a':'#dc2626';
-  charts.eq=new Chart(document.getElementById('eqC').getContext('2d'),{type:'line',data:{labels:res.eqL,datasets:[
-    {label:'Ekuitas',data:res.eqC,borderColor:col,borderWidth:1.5,pointRadius:0,tension:0.3,fill:false},
-    {label:'Modal',data:Array(res.eqC.length).fill(res.cap),borderColor:'#555',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false}
-  ]},options:{...CHART_OPTS,scales:{x:{ticks:{font:{size:8},color:'#888',maxTicksLimit:10,autoSkip:true},grid:{display:false}},y:{ticks:{font:{size:9},color:'#888',callback:v=>'$'+parseFloat(v).toFixed(2)},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+  dc(&#x27;eq&#x27;);document.getElementById(&#x27;eqTitle&#x27;).textContent=title;
+  const col=res.eq&gt;=res.cap?&#x27;#16a34a&#x27;:&#x27;#dc2626&#x27;;
+  charts.eq=new Chart(document.getElementById(&#x27;eqC&#x27;).getContext(&#x27;2d&#x27;),{type:&#x27;line&#x27;,data:{labels:res.eqL,datasets:[
+    {label:&#x27;Ekuitas&#x27;,data:res.eqC,borderColor:col,borderWidth:1.5,pointRadius:0,tension:0.3,fill:false},
+    {label:&#x27;Modal&#x27;,data:Array(res.eqC.length).fill(res.cap),borderColor:&#x27;#555&#x27;,borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false}
+  ]},options:{...CHART_OPTS,scales:{x:{ticks:{font:{size:8},color:&#x27;#888&#x27;,maxTicksLimit:10,autoSkip:true},grid:{display:false}},y:{ticks:{font:{size:9},color:&#x27;#888&#x27;,callback:v=&gt;&#x27;$&#x27;+parseFloat(v).toFixed(2)},grid:{color:&#x27;rgba(255,255,255,0.04)&#x27;}}}}});
 }
 function renderCharts(res){
-  dc('dly');dc('mth');
+  dc(&#x27;dly&#x27;);dc(&#x27;mth&#x27;);
   const bd={},bm={};
-  res.trades.forEach(t=>{
-    const dk=t.exitDate.toLocaleDateString('id-ID',{day:'2-digit',month:'short'});
-    const mk=t.exitDate.toLocaleDateString('id-ID',{month:'short',year:'2-digit'});
+  res.trades.forEach(t=&gt;{
+    const dk=t.exitDate.toLocaleDateString(&#x27;id-ID&#x27;,{day:&#x27;2-digit&#x27;,month:&#x27;short&#x27;});
+    const mk=t.exitDate.toLocaleDateString(&#x27;id-ID&#x27;,{month:&#x27;short&#x27;,year:&#x27;2-digit&#x27;});
     if(!bd[dk])bd[dk]=0;bd[dk]+=t.pnl;
     if(!bm[mk])bm[mk]=0;bm[mk]+=t.pnl;
   });
-  const dk=Object.keys(bd),dv=dk.map(k=>parseFloat(bd[k].toFixed(4)));
-  const mk=Object.keys(bm),mv=mk.map(k=>parseFloat(bm[k].toFixed(4)));
-  const barOpts={...CHART_OPTS,scales:{x:{ticks:{font:{size:8},color:'#888',maxRotation:45,maxTicksLimit:12,autoSkip:true},grid:{display:false}},y:{ticks:{font:{size:8},color:'#888',callback:v=>'$'+v.toFixed(2)},grid:{color:'rgba(255,255,255,0.04)'}}}};
-  charts.dly=new Chart(document.getElementById('dlyC').getContext('2d'),{type:'bar',data:{labels:dk,datasets:[{data:dv,backgroundColor:dv.map(v=>v>=0?'#16a34a55':'#dc262655'),borderColor:dv.map(v=>v>=0?'#16a34a':'#dc2626'),borderWidth:1}]},options:barOpts});
-  charts.mth=new Chart(document.getElementById('mthC').getContext('2d'),{type:'bar',data:{labels:mk,datasets:[{data:mv,backgroundColor:mv.map(v=>v>=0?'#3b82f655':'#f9731655'),borderColor:mv.map(v=>v>=0?'#3b82f6':'#f97316'),borderWidth:1}]},options:barOpts});
+  const dk=Object.keys(bd),dv=dk.map(k=&gt;parseFloat(bd[k].toFixed(4)));
+  const mk=Object.keys(bm),mv=mk.map(k=&gt;parseFloat(bm[k].toFixed(4)));
+  const barOpts={...CHART_OPTS,scales:{x:{ticks:{font:{size:8},color:&#x27;#888&#x27;,maxRotation:45,maxTicksLimit:12,autoSkip:true},grid:{display:false}},y:{ticks:{font:{size:8},color:&#x27;#888&#x27;,callback:v=&gt;&#x27;$&#x27;+v.toFixed(2)},grid:{color:&#x27;rgba(255,255,255,0.04)&#x27;}}}};
+  charts.dly=new Chart(document.getElementById(&#x27;dlyC&#x27;).getContext(&#x27;2d&#x27;),{type:&#x27;bar&#x27;,data:{labels:dk,datasets:[{data:dv,backgroundColor:dv.map(v=&gt;v&gt;=0?&#x27;#16a34a55&#x27;:&#x27;#dc262655&#x27;),borderColor:dv.map(v=&gt;v&gt;=0?&#x27;#16a34a&#x27;:&#x27;#dc2626&#x27;),borderWidth:1}]},options:barOpts});
+  charts.mth=new Chart(document.getElementById(&#x27;mthC&#x27;).getContext(&#x27;2d&#x27;),{type:&#x27;bar&#x27;,data:{labels:mk,datasets:[{data:mv,backgroundColor:mv.map(v=&gt;v&gt;=0?&#x27;#3b82f655&#x27;:&#x27;#f9731655&#x27;),borderColor:mv.map(v=&gt;v&gt;=0?&#x27;#3b82f6&#x27;:&#x27;#f97316&#x27;),borderWidth:1}]},options:barOpts});
 }
 
 function renderMonthlyConsistency(res){
-  const panel=document.getElementById('monthlyPanel');
+  const panel=document.getElementById(&#x27;monthlyPanel&#x27;);
   if(!panel) return;
   const byM={};
-  res.trades.forEach(t=>{
-    const key=t.exitDate.toLocaleDateString('id-ID',{month:'short',year:'2-digit'});
+  res.trades.forEach(t=&gt;{
+    const key=t.exitDate.toLocaleDateString(&#x27;id-ID&#x27;,{month:&#x27;short&#x27;,year:&#x27;2-digit&#x27;});
     if(!byM[key]) byM[key]={pnl:0,trades:0};
     byM[key].pnl+=t.pnl;
     byM[key].trades++;
   });
   const keys=Object.keys(byM);
-  if(!keys.length){panel.style.display='none';return;}
-  panel.style.display='block';
+  if(!keys.length){panel.style.display=&#x27;none&#x27;;return;}
+  panel.style.display=&#x27;block&#x27;;
 
-  let green=0,red=0,best=-Infinity,worst=Infinity,bestK='--',worstK='--';
-  keys.forEach(k=>{
+  let green=0,red=0,best=-Infinity,worst=Infinity,bestK=&#x27;--&#x27;,worstK=&#x27;--&#x27;;
+  keys.forEach(k=&gt;{
     const p=byM[k].pnl;
-    if(p>=0) green++; else red++;
-    if(p>best){best=p;bestK=k;}
-    if(p<worst){worst=p;worstK=k;}
+    if(p&gt;=0) green++; else red++;
+    if(p&gt;best){best=p;bestK=k;}
+    if(p&lt;worst){worst=p;worstK=k;}
   });
-  document.getElementById('greenMonths').textContent=green;
-  document.getElementById('redMonths').textContent=red;
-  document.getElementById('bestMonth').textContent=bestK;
-  document.getElementById('worstMonth').textContent=worstK;
-  document.getElementById('monthlyList').innerHTML=keys.map(k=>{
-    const d=byM[k], cls=d.pnl>=0?'good':'bad';
-    return `<div class="month-chip ${cls}">
-      <div class="mname">${k} · ${d.trades} trade</div>
-      <div class="mpnl">${d.pnl>=0?'+':''}$${d.pnl.toFixed(2)}</div>
-    </div>`;
-  }).join('');
+  document.getElementById(&#x27;greenMonths&#x27;).textContent=green;
+  document.getElementById(&#x27;redMonths&#x27;).textContent=red;
+  document.getElementById(&#x27;bestMonth&#x27;).textContent=bestK;
+  document.getElementById(&#x27;worstMonth&#x27;).textContent=worstK;
+  document.getElementById(&#x27;monthlyList&#x27;).innerHTML=keys.map(k=&gt;{
+    const d=byM[k], cls=d.pnl&gt;=0?&#x27;good&#x27;:&#x27;bad&#x27;;
+    return `&lt;div class=&quot;month-chip ${cls}&quot;&gt;
+      &lt;div class=&quot;mname&quot;&gt;${k} · ${d.trades} trade&lt;/div&gt;
+      &lt;div class=&quot;mpnl&quot;&gt;${d.pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;}$${d.pnl.toFixed(2)}&lt;/div&gt;
+    &lt;/div&gt;`;
+  }).join(&#x27;&#x27;);
 }
 
 function renderDayList(res){
   const byDay={};
-  res.trades.forEach(t=>{
-    const k=t.exitDate.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  res.trades.forEach(t=&gt;{
+    const k=t.exitDate.toLocaleDateString(&#x27;id-ID&#x27;,{weekday:&#x27;short&#x27;,day:&#x27;numeric&#x27;,month:&#x27;short&#x27;,year:&#x27;numeric&#x27;});
     if(!byDay[k])byDay[k]={pnl:0,trades:[],w:0,l:0};
     byDay[k].pnl+=t.pnl;byDay[k].trades.push(t);
-    if(t.pnl>0)byDay[k].w++;else byDay[k].l++;
+    if(t.pnl&gt;0)byDay[k].w++;else byDay[k].l++;
   });
   const keys=Object.keys(byDay).reverse();
-  const el=document.getElementById('dayList');
-  if(!keys.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">Tidak ada trade di periode ini</div>';return;}
-  el.innerHTML=keys.map((k,idx)=>{
-    const d=byDay[k],col=d.pnl>=0?'var(--green)':'var(--red)';
-    return`<div class="day-card" id="dc_${idx}" onclick="showDay('${k.replace(/'/g,'"')}',${idx})">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-        <span style="font-size:12px;font-weight:500">${k}</span>
-        <span style="font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;color:${col}">${d.pnl>=0?'+':''}$${d.pnl.toFixed(4)}</span>
-      </div>
-      <div style="font-size:10px;color:var(--text2)">${d.trades.length} trade · ${d.w} TP/Trail · ${d.l} SL · WR ${d.trades.length?(d.w/d.trades.length*100).toFixed(0):0}%</div>
-    </div>`;
-  }).join('');
+  const el=document.getElementById(&#x27;dayList&#x27;);
+  if(!keys.length){el.innerHTML=&#x27;&lt;div style=&quot;font-size:12px;color:var(--text3);text-align:center;padding:12px&quot;&gt;Tidak ada trade di periode ini&lt;/div&gt;&#x27;;return;}
+  el.innerHTML=keys.map((k,idx)=&gt;{
+    const d=byDay[k],col=d.pnl&gt;=0?&#x27;var(--green)&#x27;:&#x27;var(--red)&#x27;;
+    return`&lt;div class=&quot;day-card&quot; id=&quot;dc_${idx}&quot; onclick=&quot;showDay(&#x27;${k.replace(/&#x27;/g,&#x27;&quot;&#x27;)}&#x27;,${idx})&quot;&gt;
+      &lt;div style=&quot;display:flex;justify-content:space-between;align-items:center;margin-bottom:2px&quot;&gt;
+        &lt;span style=&quot;font-size:12px;font-weight:500&quot;&gt;${k}&lt;/span&gt;
+        &lt;span style=&quot;font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;color:${col}&quot;&gt;${d.pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;}$${d.pnl.toFixed(4)}&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div style=&quot;font-size:10px;color:var(--text2)&quot;&gt;${d.trades.length} trade · ${d.w} TP/Trail · ${d.l} SL · WR ${d.trades.length?(d.w/d.trades.length*100).toFixed(0):0}%&lt;/div&gt;
+    &lt;/div&gt;`;
+  }).join(&#x27;&#x27;);
   window._byDay=byDay;
 }
 function showDay(k,idx){
-  document.querySelectorAll('.day-card').forEach(c=>c.classList.remove('active'));
-  document.getElementById('dc_'+idx)?.classList.add('active');
+  document.querySelectorAll(&#x27;.day-card&#x27;).forEach(c=&gt;c.classList.remove(&#x27;active&#x27;));
+  document.getElementById(&#x27;dc_&#x27;+idx)?.classList.add(&#x27;active&#x27;);
   const d=window._byDay?.[k];if(!d)return;
-  const card=document.getElementById('dayDetailCard');card.style.display='block';
-  document.getElementById('dayDetailTitle').innerHTML=`<i class="fa-solid fa-list"></i> ${k} · ${d.trades.length} trade`;
-  const hpc=TFH[TF]||1,fmtO=hpc<1?{hour:'2-digit',minute:'2-digit'}:{hour:'2-digit',minute:'2-digit'};
-  document.getElementById('dayDetailTrades').innerHTML=d.trades.map(t=>`
-    <div class="trow">
-      <span style="min-width:30px;font-weight:600;color:${t.sig==='BUY'?'var(--green)':'var(--red)'};font-size:11px">${t.sig}</span>
-      <span style="min-width:90px;font-size:9px;color:var(--text3)">${t.label}</span>
-      <span style="flex:1;color:var(--text2);font-size:9px">${t.entryDate.toLocaleTimeString('id-ID',fmtO)} → ${t.exitDate.toLocaleTimeString('id-ID',fmtO)}</span>
-      <span style="min-width:65px;font-variant-numeric:tabular-nums;color:var(--text2);font-size:9px">@$${Math.round(t.entry).toLocaleString()}</span>
-      <span style="min-width:58px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;font-size:11px;color:${t.pnl>=0?'var(--green)':'var(--red)'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(4)}</span>
-      <span style="min-width:44px;text-align:right">${t.reason==='TP'?'<span class="pill-tp">TP✓</span>':t.reason==='TRAIL'?'<span class="pill-tr">Trail</span>':t.reason==='LIQ'?'<span class="pill-lq">LIQ</span>':'<span class="pill-sl">SL</span>'}</span>
-    </div>`).join('');
-  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const card=document.getElementById(&#x27;dayDetailCard&#x27;);card.style.display=&#x27;block&#x27;;
+  document.getElementById(&#x27;dayDetailTitle&#x27;).innerHTML=`&lt;i class=&quot;fa-solid fa-list&quot;&gt;&lt;/i&gt; ${k} · ${d.trades.length} trade`;
+  const hpc=TFH[TF]||1,fmtO=hpc&lt;1?{hour:&#x27;2-digit&#x27;,minute:&#x27;2-digit&#x27;}:{hour:&#x27;2-digit&#x27;,minute:&#x27;2-digit&#x27;};
+  document.getElementById(&#x27;dayDetailTrades&#x27;).innerHTML=d.trades.map(t=&gt;`
+    &lt;div class=&quot;trow&quot;&gt;
+      &lt;span style=&quot;min-width:30px;font-weight:600;color:${t.sig===&#x27;BUY&#x27;?&#x27;var(--green)&#x27;:&#x27;var(--red)&#x27;};font-size:11px&quot;&gt;${t.sig}&lt;/span&gt;
+      &lt;span style=&quot;min-width:90px;font-size:9px;color:var(--text3)&quot;&gt;${t.label}&lt;/span&gt;
+      &lt;span style=&quot;flex:1;color:var(--text2);font-size:9px&quot;&gt;${t.entryDate.toLocaleTimeString(&#x27;id-ID&#x27;,fmtO)} → ${t.exitDate.toLocaleTimeString(&#x27;id-ID&#x27;,fmtO)}&lt;/span&gt;
+      &lt;span style=&quot;min-width:65px;font-variant-numeric:tabular-nums;color:var(--text2);font-size:9px&quot;&gt;@$${Math.round(t.entry).toLocaleString()}&lt;/span&gt;
+      &lt;span style=&quot;min-width:58px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;font-size:11px;color:${t.pnl&gt;=0?&#x27;var(--green)&#x27;:&#x27;var(--red)&#x27;}&quot;&gt;${t.pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;}$${t.pnl.toFixed(4)}&lt;/span&gt;
+      &lt;span style=&quot;min-width:44px;text-align:right&quot;&gt;${t.reason===&#x27;TP&#x27;?&#x27;&lt;span class=&quot;pill-tp&quot;&gt;TP✓&lt;/span&gt;&#x27;:t.reason===&#x27;TRAIL&#x27;?&#x27;&lt;span class=&quot;pill-tr&quot;&gt;Trail&lt;/span&gt;&#x27;:t.reason===&#x27;LIQ&#x27;?&#x27;&lt;span class=&quot;pill-lq&quot;&gt;LIQ&lt;/span&gt;&#x27;:&#x27;&lt;span class=&quot;pill-sl&quot;&gt;SL&lt;/span&gt;&#x27;}&lt;/span&gt;
+    &lt;/div&gt;`).join(&#x27;&#x27;);
+  card.scrollIntoView({behavior:&#x27;smooth&#x27;,block:&#x27;nearest&#x27;});
 }
 
 // ═══ MAIN RUN ═══
 async function runSim(){
   syncSelects();
-  if(getToTs()<=getFromTs()){alert('Tanggal akhir harus setelah tanggal awal!');return;}
-  const btn=document.getElementById('runBtn');btn.disabled=true;
-  document.getElementById('dayDetailCard').style.display='none';
-  const cap=parseFloat(document.getElementById('capIn').value)||100;
-  const riskPct=parseFloat(document.getElementById('riskR').value)/100;
-  const slMult=parseFloat(document.getElementById('slM').value);
+  if(getToTs()&lt;=getFromTs()){alert(&#x27;Tanggal akhir harus setelah tanggal awal!&#x27;);return;}
+  const btn=document.getElementById(&#x27;runBtn&#x27;);btn.disabled=true;
+  document.getElementById(&#x27;dayDetailCard&#x27;).style.display=&#x27;none&#x27;;
+  const cap=parseFloat(document.getElementById(&#x27;capIn&#x27;).value)||100;
+  const riskPct=parseFloat(document.getElementById(&#x27;riskR&#x27;).value)/100;
+  const slMult=parseFloat(document.getElementById(&#x27;slM&#x27;).value);
   const days=getDays(),aTF=getATF(days);
   const fs=`${fromD} ${MONTHS_S[fromM-1]} ${fromY}`,ts=`${toD} ${MONTHS_S[toM-1]} ${toY}`;
 
   setSt(`Mengambil data Binance ${aTF.toUpperCase()} · ${fs} → ${ts}...`,10);
   const{data:klines,isReal,tf}=await fetchData(aTF);
-  if(!klines||klines.length<15){setSt('Data tidak cukup — coba periode berbeda',0);btn.disabled=false;return;}
+  if(!klines||klines.length&lt;15){setSt(&#x27;Data tidak cukup — coba periode berbeda&#x27;,0);btn.disabled=false;return;}
 
   setSt(`${klines.length} candle dimuat — generate sinyal...`,38);
-  await new Promise(r=>setTimeout(r,15));
+  await new Promise(r=&gt;setTimeout(r,15));
   const sigs=genAdaptiveSignals(klines,slMult);
 
   setSt(`${sigs.length} sinyal → simulasi ${LEV}x leverage...`,62);
-  await new Promise(r=>setTimeout(r,15));
+  await new Promise(r=&gt;setTimeout(r,15));
   const res=simulate(klines,sigs,cap,riskPct,LEV);
 
-  const pnl=res.eq-cap,pct=pnl/cap*100,isP=res.eq>cap;
+  const pnl=res.eq-cap,pct=pnl/cap*100,isP=res.eq&gt;cap;
   const avgDay=pnl/Math.max(1,res.days),projMon=avgDay*30;
   const projYr=cap*Math.pow(1+(projMon/cap),12)-cap;
-  const feeRat=res.gp>0?res.totalFee/res.gp*100:100;
-  const fc=isP?'var(--green)':'var(--red)';
+  const feeRat=res.gp&gt;0?res.totalFee/res.gp*100:100;
+  const fc=isP?&#x27;var(--green)&#x27;:&#x27;var(--red)&#x27;;
 
-  const setM=(id,val,color,sub)=>{
+  const setM=(id,val,color,sub)=&gt;{
     document.getElementById(id).textContent=val;
     if(color)document.getElementById(id).style.color=color;
-    if(sub)document.getElementById(id+'S'||id.replace('m','mS')||id+'s').textContent=sub;
+    if(sub)document.getElementById(id+&#x27;S&#x27;||id.replace(&#x27;m&#x27;,&#x27;mS&#x27;)||id+&#x27;s&#x27;).textContent=sub;
   };
-  document.getElementById('mFin').textContent='$'+res.eq.toFixed(4);document.getElementById('mFin').style.color=fc;document.getElementById('mFinS').textContent='dari $'+cap.toFixed(2);
-  document.getElementById('mRet').textContent=(pnl>=0?'+':'')+'$'+pnl.toFixed(4);document.getElementById('mRet').style.color=fc;document.getElementById('mRetPct').textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';
-  document.getElementById('mWR').textContent=res.wr.toFixed(1)+'%';document.getElementById('mWR').style.color=res.wr>=40?'var(--green)':res.wr>=33?'var(--yellow)':'var(--red)';document.getElementById('mWRS').textContent=res.wins+' TP / '+res.losses+' SL';
-  document.getElementById('mPF').textContent=res.pf.toFixed(2)+'x';document.getElementById('mPF').style.color=res.pf>=1.3?'var(--green)':res.pf>=1?'var(--yellow)':'var(--red)';
-  document.getElementById('mTot').textContent=res.total;document.getElementById('mTotS').textContent=res.tpd.toFixed(1)+'/hari · '+Math.round(res.tpd*30)+'/bln';
-  document.getElementById('mExp').textContent=(res.exp>=0?'+':'')+'$'+res.exp.toFixed(4);document.getElementById('mExp').style.color=res.exp>=0?'var(--green)':'var(--red)';
-  document.getElementById('mDD').textContent=res.maxDD.toFixed(2)+'%';document.getElementById('mDD').style.color=res.maxDD<=15?'var(--green)':res.maxDD<=25?'var(--yellow)':'var(--red)';
-  document.getElementById('mFeeR').textContent=feeRat.toFixed(1)+'%';document.getElementById('mFeeR').style.color=feeRat<10?'var(--green)':feeRat<20?'var(--yellow)':'var(--red)';document.getElementById('mFeeT').textContent='$'+res.totalFee.toFixed(4)+' fee total';
-  document.getElementById('pjDay').textContent=(avgDay>=0?'+':'')+'$'+avgDay.toFixed(4);document.getElementById('pjDay').style.color=fc;
-  document.getElementById('pjMon').textContent=(projMon>=0?'+':'')+'$'+projMon.toFixed(4);document.getElementById('pjMon').style.color=fc;
-  document.getElementById('pjYr').textContent=(projYr>=0?'+':'')+'$'+projYr.toFixed(2);document.getElementById('pjYr').style.color=fc;
+  document.getElementById(&#x27;mFin&#x27;).textContent=&#x27;$&#x27;+res.eq.toFixed(4);document.getElementById(&#x27;mFin&#x27;).style.color=fc;document.getElementById(&#x27;mFinS&#x27;).textContent=&#x27;dari $&#x27;+cap.toFixed(2);
+  document.getElementById(&#x27;mRet&#x27;).textContent=(pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+&#x27;$&#x27;+pnl.toFixed(4);document.getElementById(&#x27;mRet&#x27;).style.color=fc;document.getElementById(&#x27;mRetPct&#x27;).textContent=(pct&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+pct.toFixed(2)+&#x27;%&#x27;;
+  document.getElementById(&#x27;mWR&#x27;).textContent=res.wr.toFixed(1)+&#x27;%&#x27;;document.getElementById(&#x27;mWR&#x27;).style.color=res.wr&gt;=40?&#x27;var(--green)&#x27;:res.wr&gt;=33?&#x27;var(--yellow)&#x27;:&#x27;var(--red)&#x27;;document.getElementById(&#x27;mWRS&#x27;).textContent=res.wins+&#x27; TP / &#x27;+res.losses+&#x27; SL&#x27;;
+  document.getElementById(&#x27;mPF&#x27;).textContent=res.pf.toFixed(2)+&#x27;x&#x27;;document.getElementById(&#x27;mPF&#x27;).style.color=res.pf&gt;=1.3?&#x27;var(--green)&#x27;:res.pf&gt;=1?&#x27;var(--yellow)&#x27;:&#x27;var(--red)&#x27;;
+  document.getElementById(&#x27;mTot&#x27;).textContent=res.total;document.getElementById(&#x27;mTotS&#x27;).textContent=res.tpd.toFixed(1)+&#x27;/hari · &#x27;+Math.round(res.tpd*30)+&#x27;/bln&#x27;;
+  document.getElementById(&#x27;mExp&#x27;).textContent=(res.exp&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+&#x27;$&#x27;+res.exp.toFixed(4);document.getElementById(&#x27;mExp&#x27;).style.color=res.exp&gt;=0?&#x27;var(--green)&#x27;:&#x27;var(--red)&#x27;;
+  document.getElementById(&#x27;mDD&#x27;).textContent=res.maxDD.toFixed(2)+&#x27;%&#x27;;document.getElementById(&#x27;mDD&#x27;).style.color=res.maxDD&lt;=15?&#x27;var(--green)&#x27;:res.maxDD&lt;=25?&#x27;var(--yellow)&#x27;:&#x27;var(--red)&#x27;;
+  document.getElementById(&#x27;mFeeR&#x27;).textContent=feeRat.toFixed(1)+&#x27;%&#x27;;document.getElementById(&#x27;mFeeR&#x27;).style.color=feeRat&lt;10?&#x27;var(--green)&#x27;:feeRat&lt;20?&#x27;var(--yellow)&#x27;:&#x27;var(--red)&#x27;;document.getElementById(&#x27;mFeeT&#x27;).textContent=&#x27;$&#x27;+res.totalFee.toFixed(4)+&#x27; fee total&#x27;;
+  document.getElementById(&#x27;pjDay&#x27;).textContent=(avgDay&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+&#x27;$&#x27;+avgDay.toFixed(4);document.getElementById(&#x27;pjDay&#x27;).style.color=fc;
+  document.getElementById(&#x27;pjMon&#x27;).textContent=(projMon&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+&#x27;$&#x27;+projMon.toFixed(4);document.getElementById(&#x27;pjMon&#x27;).style.color=fc;
+  document.getElementById(&#x27;pjYr&#x27;).textContent=(projYr&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+&#x27;$&#x27;+projYr.toFixed(2);document.getElementById(&#x27;pjYr&#x27;).style.color=fc;
 
-  const wEl=document.getElementById('rwarn');
-  if(res.liqs>0){wEl.className='warn wd';wEl.textContent=`⚠ ${res.liqs}× liquidasi di periode ${fs}→${ts}. Leverage ${LEV}x terlalu tinggi. Coba ${Math.max(1,LEV-5)}x atau perbesar SL.`;}
-  else if(isP&&res.wr>=33){wEl.className='warn wg';wEl.textContent=`✓ ${fs} → ${ts}: Profit $${pnl.toFixed(4)} (+${pct.toFixed(2)}%) · WR ${res.wr.toFixed(1)}% · PF ${res.pf.toFixed(2)}x · Fee ${feeRat.toFixed(1)}% gross P · Trail ${res.trails}× · ${isReal?'Data Binance real':'Data simulasi'}`;}
-  else{wEl.className='warn wy';wEl.textContent=`${fs} → ${ts}: WR ${res.wr.toFixed(1)}% — break-even 2:1 = 33.3%. ${!isReal?'⚠ Data simulasi, bukan Binance real.':''} Coba periode atau parameter berbeda.`;}
-  wEl.style.display='block';
+  const wEl=document.getElementById(&#x27;rwarn&#x27;);
+  if(res.liqs&gt;0){wEl.className=&#x27;warn wd&#x27;;wEl.textContent=`⚠ ${res.liqs}× liquidasi di periode ${fs}→${ts}. Leverage ${LEV}x terlalu tinggi. Coba ${Math.max(1,LEV-5)}x atau perbesar SL.`;}
+  else if(isP&amp;&amp;res.wr&gt;=33){wEl.className=&#x27;warn wg&#x27;;wEl.textContent=`✓ ${fs} → ${ts}: Profit $${pnl.toFixed(4)} (+${pct.toFixed(2)}%) · WR ${res.wr.toFixed(1)}% · PF ${res.pf.toFixed(2)}x · Fee ${feeRat.toFixed(1)}% gross P · Trail ${res.trails}× · ${isReal?&#x27;Data Binance real&#x27;:&#x27;Data simulasi&#x27;}`;}
+  else{wEl.className=&#x27;warn wy&#x27;;wEl.textContent=`${fs} → ${ts}: WR ${res.wr.toFixed(1)}% — break-even 2:1 = 33.3%. ${!isReal?&#x27;⚠ Data simulasi, bukan Binance real.&#x27;:&#x27;&#x27;} Coba periode atau parameter berbeda.`;}
+  wEl.style.display=&#x27;block&#x27;;
 
-  setSt('Merender grafik...',83);await new Promise(r=>setTimeout(r,15));
+  setSt(&#x27;Merender grafik...&#x27;,83);await new Promise(r=&gt;setTimeout(r,15));
   renderEq(res,`${fs} → ${ts} · ${tf.toUpperCase()} · ${LEV}x lev · Risk ${(riskPct*100).toFixed(1)}% · SL ${slMult}×ATR`);
   renderCharts(res);renderMonthlyConsistency(res);renderDayList(res);
 
   const hpc=TFH[tf]||1;
-  const fmtO=hpc<1?{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}:hpc<=4?{month:'short',day:'numeric',hour:'2-digit'}:{month:'short',day:'numeric'};
+  const fmtO=hpc&lt;1?{month:&#x27;short&#x27;,day:&#x27;numeric&#x27;,hour:&#x27;2-digit&#x27;,minute:&#x27;2-digit&#x27;}:hpc&lt;=4?{month:&#x27;short&#x27;,day:&#x27;numeric&#x27;,hour:&#x27;2-digit&#x27;}:{month:&#x27;short&#x27;,day:&#x27;numeric&#x27;};
   const last50=res.trades.slice(-50).reverse();
-  document.getElementById('tlog').innerHTML=last50.length?last50.map(t=>`
-    <div class="trow">
-      <span style="min-width:18px;color:var(--text3);font-size:9px">${t.idx}</span>
-      <span style="min-width:30px;font-weight:600;color:${t.sig==='BUY'?'var(--green)':'var(--red)'};font-size:11px">${t.sig}</span>
-      <span style="min-width:80px;font-size:9px;color:var(--text3)">${t.label}</span>
-      <span style="min-width:90px;color:var(--text2);font-size:9px">${t.entryDate.toLocaleString('id-ID',fmtO)}</span>
-      <span style="min-width:65px;font-variant-numeric:tabular-nums;color:var(--text2);font-size:9px">@$${Math.round(t.entry).toLocaleString()}</span>
-      <span style="min-width:55px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;font-size:10px;color:${t.pnl>=0?'var(--green)':'var(--red)'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(4)}</span>
-      <span style="min-width:52px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text2);font-size:9px">$${t.equity.toFixed(2)}</span>
-      <span style="flex:1;text-align:right">${t.reason==='TP'?'<span class="pill-tp">TP✓</span>':t.reason==='TRAIL'?'<span class="pill-tr">Trail</span>':t.reason==='LIQ'?'<span class="pill-lq">LIQ</span>':'<span class="pill-sl">SL</span>'}</span>
-    </div>`).join(''):'<div style="font-size:12px;color:var(--text3);text-align:center;padding:10px">Tidak ada trade</div>';
+  document.getElementById(&#x27;tlog&#x27;).innerHTML=last50.length?last50.map(t=&gt;`
+    &lt;div class=&quot;trow&quot;&gt;
+      &lt;span style=&quot;min-width:18px;color:var(--text3);font-size:9px&quot;&gt;${t.idx}&lt;/span&gt;
+      &lt;span style=&quot;min-width:30px;font-weight:600;color:${t.sig===&#x27;BUY&#x27;?&#x27;var(--green)&#x27;:&#x27;var(--red)&#x27;};font-size:11px&quot;&gt;${t.sig}&lt;/span&gt;
+      &lt;span style=&quot;min-width:80px;font-size:9px;color:var(--text3)&quot;&gt;${t.label}&lt;/span&gt;
+      &lt;span style=&quot;min-width:90px;color:var(--text2);font-size:9px&quot;&gt;${t.entryDate.toLocaleString(&#x27;id-ID&#x27;,fmtO)}&lt;/span&gt;
+      &lt;span style=&quot;min-width:65px;font-variant-numeric:tabular-nums;color:var(--text2);font-size:9px&quot;&gt;@$${Math.round(t.entry).toLocaleString()}&lt;/span&gt;
+      &lt;span style=&quot;min-width:55px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;font-size:10px;color:${t.pnl&gt;=0?&#x27;var(--green)&#x27;:&#x27;var(--red)&#x27;}&quot;&gt;${t.pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;}$${t.pnl.toFixed(4)}&lt;/span&gt;
+      &lt;span style=&quot;min-width:52px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text2);font-size:9px&quot;&gt;$${t.equity.toFixed(2)}&lt;/span&gt;
+      &lt;span style=&quot;flex:1;text-align:right&quot;&gt;${t.reason===&#x27;TP&#x27;?&#x27;&lt;span class=&quot;pill-tp&quot;&gt;TP✓&lt;/span&gt;&#x27;:t.reason===&#x27;TRAIL&#x27;?&#x27;&lt;span class=&quot;pill-tr&quot;&gt;Trail&lt;/span&gt;&#x27;:t.reason===&#x27;LIQ&#x27;?&#x27;&lt;span class=&quot;pill-lq&quot;&gt;LIQ&lt;/span&gt;&#x27;:&#x27;&lt;span class=&quot;pill-sl&quot;&gt;SL&lt;/span&gt;&#x27;}&lt;/span&gt;
+    &lt;/div&gt;`).join(&#x27;&#x27;):&#x27;&lt;div style=&quot;font-size:12px;color:var(--text3);text-align:center;padding:10px&quot;&gt;Tidak ada trade&lt;/div&gt;&#x27;;
 
-  setSt(`Selesai · ${fs} → ${ts} · ${res.total} trade · WR ${res.wr.toFixed(1)}% · ${isReal?'Binance live':'Simulasi'}`,100);
+  setSt(`Selesai · ${fs} → ${ts} · ${res.total} trade · WR ${res.wr.toFixed(1)}% · ${isReal?&#x27;Binance live&#x27;:&#x27;Simulasi&#x27;}`,100);
   btn.disabled=false;
 }
 
@@ -1473,53 +1606,53 @@ let live2Ws=null, live2Running=false, live2Busy=false, live2SimTimer=null;
 let live2Klines=[], live2Chart=null, live2Series=null, live2Lines=[], live2Markers=[];
 let live2Open=null, live2Balance=100, live2CooldownLeft=0, live2LastSignalCandle=0;
 
-function live2Fmt(v){return '$'+Number(v).toLocaleString('en-US',{maximumFractionDigits:2});}
-function live2SetDebug(t){const el=document.getElementById('live2Debug'); if(el) el.textContent='Status: '+t;}
-function live2SetStatus(on,t){const s=document.getElementById('live2Status'); if(s)s.classList.toggle('on',!!on); document.getElementById('live2StatusText').textContent=t;}
-function live2SetButtons(r){const a=document.getElementById('live2StartBtn'),b=document.getElementById('live2StopBtn'); if(a)a.disabled=!!r; if(b)b.disabled=!r;}
+function live2Fmt(v){return &#x27;$&#x27;+Number(v).toLocaleString(&#x27;en-US&#x27;,{maximumFractionDigits:2});}
+function live2SetDebug(t){const el=document.getElementById(&#x27;live2Debug&#x27;); if(el) el.textContent=&#x27;Status: &#x27;+t;}
+function live2SetStatus(on,t){const s=document.getElementById(&#x27;live2Status&#x27;); if(s)s.classList.toggle(&#x27;on&#x27;,!!on); document.getElementById(&#x27;live2StatusText&#x27;).textContent=t;}
+function live2SetButtons(r){const a=document.getElementById(&#x27;live2StartBtn&#x27;),b=document.getElementById(&#x27;live2StopBtn&#x27;); if(a)a.disabled=!!r; if(b)b.disabled=!r;}
 function live2Log(type,info,price){
-  const el=document.getElementById('live2Log'); if(!el)return;
-  const now=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
-  const row=document.createElement('div'); row.className='live2-log-row';
-  const cls=type==='BUY'?'buy':type==='SELL'?'sell':type==='TP'?'tp':type==='SL'?'sl':'';
-  row.innerHTML=`<span>${now}</span><span class="${cls}">${type}</span><span>${info}</span><span>${price?live2Fmt(price):'--'}</span><span>${live2Fmt(live2Balance)}</span>`;
-  if(el.children.length>50) el.removeChild(el.lastChild);
+  const el=document.getElementById(&#x27;live2Log&#x27;); if(!el)return;
+  const now=new Date().toLocaleTimeString(&#x27;id-ID&#x27;,{hour:&#x27;2-digit&#x27;,minute:&#x27;2-digit&#x27;});
+  const row=document.createElement(&#x27;div&#x27;); row.className=&#x27;live2-log-row&#x27;;
+  const cls=type===&#x27;BUY&#x27;?&#x27;buy&#x27;:type===&#x27;SELL&#x27;?&#x27;sell&#x27;:type===&#x27;TP&#x27;?&#x27;tp&#x27;:type===&#x27;SL&#x27;?&#x27;sl&#x27;:&#x27;&#x27;;
+  row.innerHTML=`&lt;span&gt;${now}&lt;/span&gt;&lt;span class=&quot;${cls}&quot;&gt;${type}&lt;/span&gt;&lt;span&gt;${info}&lt;/span&gt;&lt;span&gt;${price?live2Fmt(price):&#x27;--&#x27;}&lt;/span&gt;&lt;span&gt;${live2Fmt(live2Balance)}&lt;/span&gt;`;
+  if(el.children.length&gt;50) el.removeChild(el.lastChild);
   el.insertBefore(row,el.children[1]||null);
 }
 function resetLive2Paper(){
-  live2Balance=parseFloat(document.getElementById('live2StartBalance').value)||100;
+  live2Balance=parseFloat(document.getElementById(&#x27;live2StartBalance&#x27;).value)||100;
   live2Open=null; live2CooldownLeft=0;
-  document.getElementById('live2Balance').textContent=live2Fmt(live2Balance);
-  document.getElementById('live2Position').textContent='NONE';
-  document.getElementById('live2PositionNote').textContent='reset';
-  live2Log('RESET','paper balance reset',0);
+  document.getElementById(&#x27;live2Balance&#x27;).textContent=live2Fmt(live2Balance);
+  document.getElementById(&#x27;live2Position&#x27;).textContent=&#x27;NONE&#x27;;
+  document.getElementById(&#x27;live2PositionNote&#x27;).textContent=&#x27;reset&#x27;;
+  live2Log(&#x27;RESET&#x27;,&#x27;paper balance reset&#x27;,0);
   live2ClearLines();
 }
 function initLive2Chart(){
-  const el=document.getElementById('live2Chart'), wrap=document.getElementById('live2ChartWrap');
-  if(!el||!wrap||typeof LightweightCharts==='undefined') return false;
-  el.innerHTML='';
+  const el=document.getElementById(&#x27;live2Chart&#x27;), wrap=document.getElementById(&#x27;live2ChartWrap&#x27;);
+  if(!el||!wrap||typeof LightweightCharts===&#x27;undefined&#x27;) return false;
+  el.innerHTML=&#x27;&#x27;;
   live2Chart=LightweightCharts.createChart(el,{
     width:wrap.clientWidth,height:wrap.clientHeight,
-    layout:{background:{type:'solid',color:'#0b0f14'},textColor:'#9ca3af',fontSize:12},
-    grid:{vertLines:{color:'rgba(255,255,255,.05)'},horzLines:{color:'rgba(255,255,255,.05)'}},
+    layout:{background:{type:&#x27;solid&#x27;,color:&#x27;#0b0f14&#x27;},textColor:&#x27;#9ca3af&#x27;,fontSize:12},
+    grid:{vertLines:{color:&#x27;rgba(255,255,255,.05)&#x27;},horzLines:{color:&#x27;rgba(255,255,255,.05)&#x27;}},
     crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
-    rightPriceScale:{borderColor:'rgba(255,255,255,.12)',scaleMargins:{top:0.12,bottom:0.12}},
-    timeScale:{borderColor:'rgba(255,255,255,.12)',timeVisible:true,secondsVisible:false,rightOffset:12,barSpacing:8}
+    rightPriceScale:{borderColor:&#x27;rgba(255,255,255,.12)&#x27;,scaleMargins:{top:0.12,bottom:0.12}},
+    timeScale:{borderColor:&#x27;rgba(255,255,255,.12)&#x27;,timeVisible:true,secondsVisible:false,rightOffset:12,barSpacing:8}
   });
   live2Series=live2Chart.addCandlestickSeries({
-    upColor:'#22c55e',downColor:'#ef4444',borderUpColor:'#22c55e',borderDownColor:'#ef4444',wickUpColor:'#22c55e',wickDownColor:'#ef4444',
+    upColor:&#x27;#22c55e&#x27;,downColor:&#x27;#ef4444&#x27;,borderUpColor:&#x27;#22c55e&#x27;,borderDownColor:&#x27;#ef4444&#x27;,wickUpColor:&#x27;#22c55e&#x27;,wickDownColor:&#x27;#ef4444&#x27;,
     priceLineVisible:false,lastValueVisible:true
   });
-  window.addEventListener('resize',()=>{if(live2Chart&&wrap)live2Chart.applyOptions({width:wrap.clientWidth,height:wrap.clientHeight});});
+  window.addEventListener(&#x27;resize&#x27;,()=&gt;{if(live2Chart&amp;&amp;wrap)live2Chart.applyOptions({width:wrap.clientWidth,height:wrap.clientHeight});});
   return true;
 }
 function live2LoadChart(){
   if(!live2Series){ if(!initLive2Chart())return; }
-  const data=live2Klines.map(k=>({time:Math.floor(k.t/1000),open:k.o,high:k.h,low:k.l,close:k.c}));
+  const data=live2Klines.map(k=&gt;({time:Math.floor(k.t/1000),open:k.o,high:k.h,low:k.l,close:k.c}));
   live2Series.setData(data); live2Chart.timeScale().fitContent();
-  const ph=document.getElementById('live2Placeholder'); if(ph)ph.style.display='none';
-  document.getElementById('live2ChartInfo').innerHTML=`${data.length} candle loaded<br>${document.getElementById('live2Tf').value} Binance`;
+  const ph=document.getElementById(&#x27;live2Placeholder&#x27;); if(ph)ph.style.display=&#x27;none&#x27;;
+  document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=`${data.length} candle loaded&lt;br&gt;${document.getElementById(&#x27;live2Tf&#x27;).value} Binance`;
 }
 function live2UpdateChart(k){
   if(!live2Series)return;
@@ -1527,190 +1660,190 @@ function live2UpdateChart(k){
 }
 function live2ClearLines(){
   if(!live2Series)return;
-  live2Lines.forEach(l=>{try{live2Series.removePriceLine(l)}catch(e){}});
+  live2Lines.forEach(l=&gt;{try{live2Series.removePriceLine(l)}catch(e){}});
   live2Lines=[];
 }
 function live2DrawPosition(pos){
   if(!live2Series||!pos)return;
   live2ClearLines();
-  live2Lines.push(live2Series.createPriceLine({price:pos.entry,color:'#3b82f6',lineWidth:2,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:'ENTRY'}));
-  live2Lines.push(live2Series.createPriceLine({price:pos.tp,color:'#16a34a',lineWidth:2,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:'TP'}));
-  live2Lines.push(live2Series.createPriceLine({price:pos.sl,color:'#dc2626',lineWidth:2,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:'SL'}));
-  live2Markers.push({time:Math.floor(pos.time/1000),position:pos.side==='BUY'?'belowBar':'aboveBar',color:pos.side==='BUY'?'#22c55e':'#ef4444',shape:pos.side==='BUY'?'arrowUp':'arrowDown',text:pos.side});
-  if(live2Markers.length>30)live2Markers.shift();
+  live2Lines.push(live2Series.createPriceLine({price:pos.entry,color:&#x27;#3b82f6&#x27;,lineWidth:2,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:&#x27;ENTRY&#x27;}));
+  live2Lines.push(live2Series.createPriceLine({price:pos.tp,color:&#x27;#16a34a&#x27;,lineWidth:2,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:&#x27;TP&#x27;}));
+  live2Lines.push(live2Series.createPriceLine({price:pos.sl,color:&#x27;#dc2626&#x27;,lineWidth:2,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:&#x27;SL&#x27;}));
+  live2Markers.push({time:Math.floor(pos.time/1000),position:pos.side===&#x27;BUY&#x27;?&#x27;belowBar&#x27;:&#x27;aboveBar&#x27;,color:pos.side===&#x27;BUY&#x27;?&#x27;#22c55e&#x27;:&#x27;#ef4444&#x27;,shape:pos.side===&#x27;BUY&#x27;?&#x27;arrowUp&#x27;:&#x27;arrowDown&#x27;,text:pos.side});
+  if(live2Markers.length&gt;30)live2Markers.shift();
   live2Series.setMarkers(live2Markers);
-  document.getElementById('live2ChartInfo').innerHTML=`${pos.side} active<br>Entry ${live2Fmt(pos.entry)} · TP ${live2Fmt(pos.tp)} · SL ${live2Fmt(pos.sl)}`;
+  document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=`${pos.side} active&lt;br&gt;Entry ${live2Fmt(pos.entry)} · TP ${live2Fmt(pos.tp)} · SL ${live2Fmt(pos.sl)}`;
 }
 async function live2Preload(){
-  const tf=document.getElementById('live2Tf').value||'15m';
-  const urls=[`https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=${tf}&limit=500`,`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${tf}&limit=500`];
+  const tf=document.getElementById(&#x27;live2Tf&#x27;).value||&#x27;15m&#x27;;
+  const urls=[`https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&amp;interval=${tf}&amp;limit=500`,`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&amp;interval=${tf}&amp;limit=500`];
   let err=null;
   for(const u of urls){
-    try{const r=await fetch(u); if(!r.ok)throw new Error('HTTP '+r.status); const d=await r.json();
-      live2Klines=d.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]})); return;
+    try{const r=await fetch(u); if(!r.ok)throw new Error(&#x27;HTTP &#x27;+r.status); const d=await r.json();
+      live2Klines=d.map(k=&gt;({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]})); return;
     }catch(e){err=e;}
   }
-  throw err||new Error('preload failed');
+  throw err||new Error(&#x27;preload failed&#x27;);
 }
 function live2ApplyStrategyMode(){
-  const liveMode=document.getElementById('live2Strategy').value;
-  const strategySelect=document.getElementById('strategyMode');
+  const liveMode=document.getElementById(&#x27;live2Strategy&#x27;).value;
+  const strategySelect=document.getElementById(&#x27;strategyMode&#x27;);
   if(strategySelect) strategySelect.value=liveMode;
-  const tf=document.getElementById('live2Tf').value;
+  const tf=document.getElementById(&#x27;live2Tf&#x27;).value;
   TF=tf;
 }
 function live2Evaluate(){
   live2ApplyStrategyMode();
-  if(live2Klines.length<260)return null;
-  const slMult=parseFloat(document.getElementById('slM')?.value||'1.2');
+  if(live2Klines.length&lt;260)return null;
+  const slMult=parseFloat(document.getElementById(&#x27;slM&#x27;)?.value||&#x27;1.2&#x27;);
   const sigs=genAdaptiveSignals(live2Klines,slMult);
   if(!sigs.length)return null;
   const s=sigs[sigs.length-1];
   const lastIdx=live2Klines.length-1;
-  if(Math.abs(s.i-lastIdx)>1)return null;
+  if(Math.abs(s.i-lastIdx)&gt;1)return null;
   return s;
 }
 function live2SetSignalUI(sig,price){
-  const act=document.getElementById('live2Action');
+  const act=document.getElementById(&#x27;live2Action&#x27;);
   if(!sig){
-    act.textContent=live2Open?'IN POSITION':'WAIT'; act.className='live2-action wait';
-    document.getElementById('live2Score').textContent='Score --/10';
-    document.getElementById('live2Entry').textContent=live2Fmt(price||0);
-    document.getElementById('live2Tp').textContent=live2Open?live2Fmt(live2Open.tp):'$--';
-    document.getElementById('live2Sl').textContent=live2Open?live2Fmt(live2Open.sl):'$--';
-    document.getElementById('live2Reason').textContent=live2Open?'holding active signal':'no valid setup';
+    act.textContent=live2Open?&#x27;IN POSITION&#x27;:&#x27;WAIT&#x27;; act.className=&#x27;live2-action wait&#x27;;
+    document.getElementById(&#x27;live2Score&#x27;).textContent=&#x27;Score --/10&#x27;;
+    document.getElementById(&#x27;live2Entry&#x27;).textContent=live2Fmt(price||0);
+    document.getElementById(&#x27;live2Tp&#x27;).textContent=live2Open?live2Fmt(live2Open.tp):&#x27;$--&#x27;;
+    document.getElementById(&#x27;live2Sl&#x27;).textContent=live2Open?live2Fmt(live2Open.sl):&#x27;$--&#x27;;
+    document.getElementById(&#x27;live2Reason&#x27;).textContent=live2Open?&#x27;holding active signal&#x27;:&#x27;no valid setup&#x27;;
     return;
   }
-  act.textContent=sig.sig; act.className='live2-action '+(sig.sig==='BUY'?'buy':'sell');
-  document.getElementById('live2Score').textContent='Score '+(sig.score||0)+'/10';
-  document.getElementById('live2Entry').textContent=live2Fmt(sig.price);
-  document.getElementById('live2Tp').textContent=live2Fmt(sig.tpP);
-  document.getElementById('live2Sl').textContent=live2Fmt(sig.slP);
-  document.getElementById('live2Reason').textContent=sig.label||sig.regime||'signal';
-  document.getElementById('live2Regime').textContent=sig.regime||'--';
-  document.getElementById('live2Lev').textContent=(sig.levHint||LEV)+'x';
+  act.textContent=sig.sig; act.className=&#x27;live2-action &#x27;+(sig.sig===&#x27;BUY&#x27;?&#x27;buy&#x27;:&#x27;sell&#x27;);
+  document.getElementById(&#x27;live2Score&#x27;).textContent=&#x27;Score &#x27;+(sig.score||0)+&#x27;/10&#x27;;
+  document.getElementById(&#x27;live2Entry&#x27;).textContent=live2Fmt(sig.price);
+  document.getElementById(&#x27;live2Tp&#x27;).textContent=live2Fmt(sig.tpP);
+  document.getElementById(&#x27;live2Sl&#x27;).textContent=live2Fmt(sig.slP);
+  document.getElementById(&#x27;live2Reason&#x27;).textContent=sig.label||sig.regime||&#x27;signal&#x27;;
+  document.getElementById(&#x27;live2Regime&#x27;).textContent=sig.regime||&#x27;--&#x27;;
+  document.getElementById(&#x27;live2Lev&#x27;).textContent=(sig.levHint||LEV)+&#x27;x&#x27;;
 }
 function live2CheckPosition(candle){
   if(!live2Open)return;
   const p=live2Open;
   let hit=null, exitPrice=null;
-  if(p.side==='BUY'){
-    if(candle.l<=p.sl){hit='SL'; exitPrice=p.sl;}
-    else if(candle.h>=p.tp){hit='TP'; exitPrice=p.tp;}
+  if(p.side===&#x27;BUY&#x27;){
+    if(candle.l&lt;=p.sl){hit=&#x27;SL&#x27;; exitPrice=p.sl;}
+    else if(candle.h&gt;=p.tp){hit=&#x27;TP&#x27;; exitPrice=p.tp;}
   }else{
-    if(candle.h>=p.sl){hit='SL'; exitPrice=p.sl;}
-    else if(candle.l<=p.tp){hit='TP'; exitPrice=p.tp;}
+    if(candle.h&gt;=p.sl){hit=&#x27;SL&#x27;; exitPrice=p.sl;}
+    else if(candle.l&lt;=p.tp){hit=&#x27;TP&#x27;; exitPrice=p.tp;}
   }
   if(!hit)return;
-  const dir=p.side==='BUY'?1:-1;
+  const dir=p.side===&#x27;BUY&#x27;?1:-1;
   const pnlPct=((exitPrice-p.entry)/p.entry)*dir*p.lev;
   const fee=p.margin*p.lev*0.0008;
   const pnl=p.margin*pnlPct-fee;
   live2Balance=Math.max(0,live2Balance+pnl);
-  document.getElementById('live2Balance').textContent=live2Fmt(live2Balance);
-  document.getElementById('live2Position').textContent='NONE';
-  document.getElementById('live2PositionNote').textContent=`last ${hit} ${pnl>=0?'+':''}${live2Fmt(pnl)}`;
-  live2Log(hit,`${p.side} closed · PnL ${pnl>=0?'+':''}${live2Fmt(pnl)}`,exitPrice);
-  live2Open=null; live2CooldownLeft=parseInt(document.getElementById('live2Cooldown').value||'3',10);
+  document.getElementById(&#x27;live2Balance&#x27;).textContent=live2Fmt(live2Balance);
+  document.getElementById(&#x27;live2Position&#x27;).textContent=&#x27;NONE&#x27;;
+  document.getElementById(&#x27;live2PositionNote&#x27;).textContent=`last ${hit} ${pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;}${live2Fmt(pnl)}`;
+  live2Log(hit,`${p.side} closed · PnL ${pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;}${live2Fmt(pnl)}`,exitPrice);
+  live2Open=null; live2CooldownLeft=parseInt(document.getElementById(&#x27;live2Cooldown&#x27;).value||&#x27;3&#x27;,10);
   live2ClearLines();
 }
 function live2OpenSignal(sig){
-  if(!sig||live2Open||live2CooldownLeft>0)return;
+  if(!sig||live2Open||live2CooldownLeft&gt;0)return;
   if(sig.date.getTime()===live2LastSignalCandle)return;
   live2LastSignalCandle=sig.date.getTime();
-  const riskPct=(parseFloat(document.getElementById('live2Risk').value)||1)/100;
+  const riskPct=(parseFloat(document.getElementById(&#x27;live2Risk&#x27;).value)||1)/100;
   const lev=sig.levHint||LEV||3;
   const margin=Math.max(1,live2Balance*riskPct);
   live2Open={side:sig.sig,entry:sig.price,tp:sig.tpP,sl:sig.slP,lev,margin,time:sig.date.getTime(),label:sig.label,regime:sig.regime};
-  document.getElementById('live2Position').textContent=sig.sig;
-  document.getElementById('live2PositionNote').textContent=`lev ${lev}x · margin ${live2Fmt(margin)}`;
+  document.getElementById(&#x27;live2Position&#x27;).textContent=sig.sig;
+  document.getElementById(&#x27;live2PositionNote&#x27;).textContent=`lev ${lev}x · margin ${live2Fmt(margin)}`;
   live2SetSignalUI(sig,sig.price);
   live2DrawPosition(live2Open);
-  live2Log(sig.sig,sig.label||sig.regime||'signal opened',sig.price);
+  live2Log(sig.sig,sig.label||sig.regime||&#x27;signal opened&#x27;,sig.price);
 }
 function live2OnClosedCandle(candle){
   live2CheckPosition(candle);
   if(live2Open){live2SetSignalUI(null,candle.c);return;}
-  if(live2CooldownLeft>0){live2CooldownLeft--; live2SetSignalUI(null,candle.c); return;}
+  if(live2CooldownLeft&gt;0){live2CooldownLeft--; live2SetSignalUI(null,candle.c); return;}
   const sig=live2Evaluate();
   if(sig) live2OpenSignal(sig);
   else live2SetSignalUI(null,candle.c);
 }
 function startLive2Demo(){
   if(!live2Klines.length){const now=Date.now(); live2Klines=genSim(500,0.25,now-500*15*60*1000,now);}
-  initLive2Chart(); live2LoadChart(); live2Running=true; live2SetStatus(true,'DEMO LIVE'); live2SetButtons(true); live2SetDebug('demo live aktif karena websocket/preload gagal');
+  initLive2Chart(); live2LoadChart(); live2Running=true; live2SetStatus(true,&#x27;DEMO LIVE&#x27;); live2SetButtons(true); live2SetDebug(&#x27;demo live aktif karena websocket/preload gagal&#x27;);
   if(live2SimTimer)clearInterval(live2SimTimer);
-  live2SimTimer=setInterval(()=>{if(!live2Running)return;
+  live2SimTimer=setInterval(()=&gt;{if(!live2Running)return;
     const last=live2Klines[live2Klines.length-1], t=last.t+15*60*1000, open=last.c, close=Math.max(1000,open+(Math.random()-0.49)*open*0.004);
     const c={t,o:open,h:Math.max(open,close)+Math.random()*open*0.002,l:Math.min(open,close)-Math.random()*open*0.002,c:close,v:50+Math.random()*400};
-    live2Klines.push(c); if(live2Klines.length>600)live2Klines.shift();
-    document.getElementById('live2Price').textContent=live2Fmt(c.c); live2UpdateChart(c); live2OnClosedCandle(c);
+    live2Klines.push(c); if(live2Klines.length&gt;600)live2Klines.shift();
+    document.getElementById(&#x27;live2Price&#x27;).textContent=live2Fmt(c.c); live2UpdateChart(c); live2OnClosedCandle(c);
   },3000);
 }
 async function startLive2(){
   if(live2Busy||live2Running)return;
   live2Busy=true; resetLive2Paper(); live2ApplyStrategyMode();
   try{
-    live2SetStatus(false,'LOADING'); live2SetButtons(true); live2SetDebug('ambil candle awal...');
+    live2SetStatus(false,&#x27;LOADING&#x27;); live2SetButtons(true); live2SetDebug(&#x27;ambil candle awal...&#x27;);
     await live2Preload(); initLive2Chart(); live2LoadChart();
-    const tf=document.getElementById('live2Tf').value||'15m';
+    const tf=document.getElementById(&#x27;live2Tf&#x27;).value||&#x27;15m&#x27;;
     const urls=[`wss://fstream.binance.com/ws/btcusdt@kline_${tf}`,`wss://stream.binance.com:9443/ws/btcusdt@kline_${tf}`];
     live2Running=true;
     let opened=false, idx=0;
-    const attach=(ws)=>{
-      ws.onopen=()=>{opened=true; live2SetStatus(true,'LIVE'); live2SetDebug('websocket tersambung, sinyal hanya saat candle close');};
-      ws.onerror=()=>live2SetDebug('websocket error, coba fallback...');
-      ws.onclose=()=>{if(live2Running&&!opened&&idx<1){idx++; live2Ws=new WebSocket(urls[idx]); attach(live2Ws);} else if(live2Running&&!opened){startLive2Demo();} else live2SetStatus(false,'OFFLINE');};
-      ws.onmessage=(ev)=>{
+    const attach=(ws)=&gt;{
+      ws.onopen=()=&gt;{opened=true; live2SetStatus(true,&#x27;LIVE&#x27;); live2SetDebug(&#x27;websocket tersambung, sinyal hanya saat candle close&#x27;);};
+      ws.onerror=()=&gt;live2SetDebug(&#x27;websocket error, coba fallback...&#x27;);
+      ws.onclose=()=&gt;{if(live2Running&amp;&amp;!opened&amp;&amp;idx&lt;1){idx++; live2Ws=new WebSocket(urls[idx]); attach(live2Ws);} else if(live2Running&amp;&amp;!opened){startLive2Demo();} else live2SetStatus(false,&#x27;OFFLINE&#x27;);};
+      ws.onmessage=(ev)=&gt;{
         if(!live2Running)return;
         const msg=JSON.parse(ev.data), k=msg.k;
         const c={t:+k.t,o:+k.o,h:+k.h,l:+k.l,c:+k.c,v:+k.v};
-        document.getElementById('live2Price').textContent=live2Fmt(c.c);
+        document.getElementById(&#x27;live2Price&#x27;).textContent=live2Fmt(c.c);
         const last=live2Klines[live2Klines.length-1];
-        if(last&&last.t===c.t)live2Klines[live2Klines.length-1]=c; else live2Klines.push(c);
-        if(live2Klines.length>600)live2Klines.shift();
+        if(last&amp;&amp;last.t===c.t)live2Klines[live2Klines.length-1]=c; else live2Klines.push(c);
+        if(live2Klines.length&gt;600)live2Klines.shift();
         live2UpdateChart(c);
         if(k.x)live2OnClosedCandle(c);
       };
     };
     live2Ws=new WebSocket(urls[0]); attach(live2Ws);
-    setTimeout(()=>{if(live2Running&&!opened)try{live2Ws.close()}catch(e){}},6000);
+    setTimeout(()=&gt;{if(live2Running&amp;&amp;!opened)try{live2Ws.close()}catch(e){}},6000);
   }catch(e){startLive2Demo();}
   finally{live2Busy=false;}
 }
 function stopLive2(){
   live2Running=false; live2Busy=false;
   if(live2SimTimer){clearInterval(live2SimTimer);live2SimTimer=null;}
-  if(live2Ws){try{live2Ws.close(1000,'manual')}catch(e){} live2Ws=null;}
-  live2SetStatus(false,'STOPPED'); live2SetButtons(false); live2SetDebug('berhenti');
+  if(live2Ws){try{live2Ws.close(1000,&#x27;manual&#x27;)}catch(e){} live2Ws=null;}
+  live2SetStatus(false,&#x27;STOPPED&#x27;); live2SetButtons(false); live2SetDebug(&#x27;berhenti&#x27;);
 }
 function loadLive2Preview(){
   try{
     if(!initLive2Chart())return;
     const now=Date.now(); live2Klines=genSim(160,0.25,now-160*15*60*1000,now); live2LoadChart();
-    document.getElementById('live2Placeholder').style.display='none';
-    document.getElementById('live2ChartInfo').innerHTML='Preview candle loaded<br>Start Live Signal untuk live data';
+    document.getElementById(&#x27;live2Placeholder&#x27;).style.display=&#x27;none&#x27;;
+    document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=&#x27;Preview candle loaded&lt;br&gt;Start Live Signal untuk live data&#x27;;
   }catch(e){}
 }
 
 
 function updateLive2StrategyInfo(){
-  const v=document.getElementById('live2Strategy').value;
-  const info=document.getElementById('live2StrategyInfo');
-  const desc=document.getElementById('live2StrategyDesc');
+  const v=document.getElementById(&#x27;live2Strategy&#x27;).value;
+  const info=document.getElementById(&#x27;live2StrategyInfo&#x27;);
+  const desc=document.getElementById(&#x27;live2StrategyDesc&#x27;);
 
-  if(v==='adaptive'){
-    info.textContent='Monthly Consistency (Recommended)';
-    desc.textContent='Fokus profit konsisten bulanan dan menghindari spam signal.';
-  }else if(v==='strict'){
-    info.textContent='Strict Quality';
-    desc.textContent='Signal lebih sedikit tapi kualitas entry lebih ketat.';
-  }else if(v==='trend'){
-    info.textContent='Trend Only';
-    desc.textContent='Hanya entry mengikuti arah trend utama.';
-  }else if(v==='range'){
-    info.textContent='Range Only';
-    desc.textContent='Fokus pantulan support/resistance sideways.';
+  if(v===&#x27;adaptive&#x27;){
+    info.textContent=&#x27;Monthly Consistency (Recommended)&#x27;;
+    desc.textContent=&#x27;Fokus profit konsisten bulanan dan menghindari spam signal.&#x27;;
+  }else if(v===&#x27;strict&#x27;){
+    info.textContent=&#x27;Strict Quality&#x27;;
+    desc.textContent=&#x27;Signal lebih sedikit tapi kualitas entry lebih ketat.&#x27;;
+  }else if(v===&#x27;trend&#x27;){
+    info.textContent=&#x27;Trend Only&#x27;;
+    desc.textContent=&#x27;Hanya entry mengikuti arah trend utama.&#x27;;
+  }else if(v===&#x27;range&#x27;){
+    info.textContent=&#x27;Range Only&#x27;;
+    desc.textContent=&#x27;Fokus pantulan support/resistance sideways.&#x27;;
   }
 }
 
@@ -1720,6 +1853,210 @@ live2SetButtons(false);
 setTimeout(loadLive2Preview,500);
 updateLive2StrategyInfo();
 setLiveButtons(false);
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;" onload="resizeTradeFrame()"></iframe>
+    </div>
+  </section>
+
+  <section id="poly" class="section">
+    <div class="card">
+      <div class="card-title">Poly Controls</div>
+      <div class="controls">
+        <div><label>AI Call Mode</label><select id="polyMode"><option>Balanced AI</option><option>Strict Quality</option><option>Contrarian</option></select></div>
+        <div><label>Category</label><select id="polyCategory"><option>Crypto</option><option>Macro</option><option>Politics</option><option>Sports</option></select></div>
+        <div><label>Balance</label><input id="polyBalance" value="1000" type="number"></div>
+        <div><label>From Date</label><input id="polyFrom" type="date"></div>
+        <div><label>To Date</label><input id="polyTo" type="date"></div>
+      </div>
+      <div class="btns">
+        <button onclick="scanPoly()">Scan Live Open Market</button>
+        <button class="green" onclick="openPolyCall()">Open AI Call</button>
+        <button onclick="runPolyBacktest()">Run Poly Backtest</button>
+        <button class="danger" onclick="clearHistory()">Clear History</button>
+      </div>
+      <div class="note">Poly dibuat sebagai dashboard sendiri: AI live signal, active call, history lengkap, balance, date range, dan backtest equity.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Poly Live Signal — AI Call</div>
+      <div class="signal">
+        <div class="signal-top">
+          <div id="polyAction" class="action yellow">WAIT</div>
+          <div id="polyScore" class="score">Confidence --%</div>
+        </div>
+        <div class="levels">
+          <div class="level"><small>Market</small><b id="polyMarket">--</b></div>
+          <div class="level"><small>Entry Odds</small><b id="polyEntry">--</b></div>
+          <div class="level"><small>Target</small><b id="polyTarget">--</b></div>
+          <div class="level"><small>Stop</small><b id="polyStop">--</b></div>
+        </div>
+      </div>
+      <div class="note">AI membaca open market, odds YES/NO, volume, liquidity, dan bias futures untuk keputusan BUY YES / BUY NO / WAIT.</div>
+    </div>
+
+    <div class="grid5">
+      <div class="metric"><small>Poly Balance</small><b id="polyBal" class="good">$1,000</b><span>paper</span></div>
+      <div class="metric"><small>AI Profit</small><b id="polyProfit" class="good">+$142</b><span>selected range</span></div>
+      <div class="metric"><small>Win Rate</small><b id="polyWR">68%</b><span>closed calls</span></div>
+      <div class="metric"><small>Active Calls</small><b id="activeCount" class="blue">2</b><span>open</span></div>
+      <div class="metric"><small>Best Market</small><b class="good">BTC</b><span>crypto</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Live Open Markets — AI Scanner</div>
+      <div class="table">
+        <div class="row poly-row head"><span>Market</span><span>YES</span><span>NO</span><span>Vol</span><span>Signal</span><span>Entry</span><span>Status</span><span>Conf</span></div>
+        <div class="row poly-row"><span>BTC above $120k in 2026?</span><span class="good">64%</span><span class="bad">36%</span><span>$2.4M</span><span class="good">BUY YES</span><span>0.64</span><span><span class="badge wait">READY</span></span><span>78%</span></div>
+        <div class="row poly-row"><span>ETH new ATH this year?</span><span>47%</span><span>53%</span><span>$1.1M</span><span class="bad">BUY NO</span><span>0.53</span><span><span class="badge wait">READY</span></span><span>66%</span></div>
+        <div class="row poly-row"><span>Fed cuts rates next meeting?</span><span class="good">58%</span><span class="bad">42%</span><span>$8.1M</span><span class="yellow">WAIT</span><span>--</span><span><span class="badge wait">WAIT</span></span><span>54%</span></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Active Poly Calls</div>
+        <div id="activeCalls" class="table">
+          <div class="row call-row head"><span>Time</span><span>Side</span><span>Market</span><span>Entry</span><span>Now</span><span>Target</span><span>Status</span><span>PnL</span></div>
+          <div class="row call-row"><span>09:15</span><span class="good">BUY YES</span><span>BTC above $120k in 2026?</span><span>0.61</span><span>0.64</span><span>0.72</span><span><span class="badge open">OPEN</span></span><span class="good">+$30</span></div>
+          <div class="row call-row"><span>10:40</span><span class="bad">BUY NO</span><span>ETH new ATH this year?</span><span>0.55</span><span>0.53</span><span>0.44</span><span><span class="badge open">OPEN</span></span><span class="good">+$18</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Polymarket Scanner</div>
+        <div class="market">
+          <div class="market-top"><b>Will Bitcoin hit $120k in 2026?</b><span class="tag">Crypto</span></div>
+          <div class="probs">
+            <div class="prob"><small>YES</small><b class="good">64%</b><div class="bar"><div class="yes" style="width:64%"></div></div></div>
+            <div class="prob"><small>NO</small><b class="bad">36%</b><div class="bar"><div class="no" style="width:36%"></div></div></div>
+          </div>
+        </div>
+        <div class="market">
+          <div class="market-top"><b>Fed cuts rates next meeting?</b><span class="tag">Macro</span></div>
+          <div class="probs">
+            <div class="prob"><small>YES</small><b class="good">58%</b><div class="bar"><div class="yes" style="width:58%"></div></div></div>
+            <div class="prob"><small>NO</small><b class="bad">42%</b><div class="bar"><div class="no" style="width:42%"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Poly AI Backtest Equity</div>
+      <div class="chartbox"><canvas id="polyChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Complete Poly Call History</div>
+      <div id="polyHistory" class="table">
+        <div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>
+        <div class="row hist-row"><span>12 Jun</span><span class="good">BUY YES</span><span>BTC above $120k?</span><span>0.59</span><span>0.67</span><span><span class="badge win">WIN</span></span><span class="good">+$80</span></div>
+        <div class="row hist-row"><span>11 Jun</span><span class="bad">BUY NO</span><span>ETH ATH?</span><span>0.54</span><span>0.48</span><span><span class="badge win">WIN</span></span><span class="good">+$60</span></div>
+        <div class="row hist-row"><span>10 Jun</span><span class="good">BUY YES</span><span>Fed cuts rates?</span><span>0.57</span><span>0.53</span><span><span class="badge loss">LOSS</span></span><span class="bad">-$40</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+let currentPoly=null, polyChart=null;
+
+function showTab(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  if (id === 'poly') setTimeout(renderPolyChart, 80);
+  if (id === 'trade') setTimeout(resizeTradeFrame, 250);
+}
+
+function resizeTradeFrame() {
+  const frame = document.getElementById('tradeFrame');
+  try {
+    const doc = frame.contentWindow.document;
+    const h = Math.max(1800, doc.documentElement.scrollHeight, doc.body.scrollHeight);
+    frame.style.height = (h + 40) + 'px';
+  } catch(e) {
+    frame.style.height = '2200px';
+  }
+}
+
+setInterval(() => {
+  if (document.getElementById('trade').classList.contains('active')) resizeTradeFrame();
+}, 1500);
+
+function scanPoly() {
+  const arr = [
+    {side:'BUY YES', cls:'good', m:'BTC above $120k?', entry:.64, target:.74, stop:.58, conf:78},
+    {side:'BUY NO', cls:'bad', m:'ETH ATH this year?', entry:.53, target:.63, stop:.47, conf:66},
+    {side:'WAIT', cls:'yellow', m:'Fed cuts rates?', entry:null, target:null, stop:null, conf:54}
+  ];
+  currentPoly = arr[Math.floor(Math.random()*arr.length)];
+  const a = document.getElementById('polyAction');
+  a.textContent = currentPoly.side;
+  a.className = 'action ' + currentPoly.cls;
+  document.getElementById('polyScore').textContent = 'Confidence ' + currentPoly.conf + '%';
+  document.getElementById('polyMarket').textContent = currentPoly.m;
+  document.getElementById('polyEntry').textContent = currentPoly.entry ? currentPoly.entry.toFixed(2) : '--';
+  document.getElementById('polyTarget').textContent = currentPoly.target ? currentPoly.target.toFixed(2) : '--';
+  document.getElementById('polyStop').textContent = currentPoly.stop ? currentPoly.stop.toFixed(2) : '--';
+}
+
+function openPolyCall() {
+  if (!currentPoly) scanPoly();
+  if (currentPoly.side === 'WAIT') return;
+  const table = document.getElementById('activeCalls');
+  const row = document.createElement('div');
+  row.className = 'row call-row';
+  row.innerHTML = `<span>Now</span><span class="${currentPoly.cls}">${currentPoly.side}</span><span>${currentPoly.m}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.target.toFixed(2)}</span><span><span class="badge open">OPEN</span></span><span class="yellow">$0</span>`;
+  table.appendChild(row);
+  document.getElementById('activeCount').textContent = Number(document.getElementById('activeCount').textContent) + 1;
+}
+
+function runPolyBacktest() {
+  const bal = Number(document.getElementById('polyBalance').value || 1000);
+  document.getElementById('polyBal').textContent = '$' + bal.toLocaleString();
+  document.getElementById('polyProfit').textContent = '+$' + Math.round(bal * .142).toLocaleString();
+  renderPolyChart();
+}
+
+function clearHistory() {
+  document.getElementById('polyHistory').innerHTML = '<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
+}
+
+function renderPolyChart() {
+  const ctx = document.getElementById('polyChart');
+  if (!ctx || !window.Chart) return;
+  if (polyChart) polyChart.destroy();
+  polyChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      datasets:[{
+        data:[1000,1040,1015,1090,1125,1142,1180,1165,1210,1255,1280,1318],
+        borderColor:'#60a5fa',
+        backgroundColor:'rgba(96,165,250,.14)',
+        fill:true,
+        tension:.35,
+        pointRadius:0
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}}
+      }
+    }
+  });
+}
+
+window.addEventListener('load', () => {
+  resizeTradeFrame();
+  renderPolyChart();
+});
 </script>
 </body>
 </html>
