@@ -1779,7 +1779,7 @@ setLiveButtons(false);
         <div><label>Balance</label><input id="polyBalance" value="1000" type="number"></div>
         <div><label>From Date</label><input id="polyFrom" type="date" value="2025-01-01"></div>
         <div><label>To Date</label><input id="polyTo" type="date" value="2025-12-31"></div>
-        <div><label>History Interval</label><select id="polyInterval"><option value="1h">1H</option><option value="6h">6H</option><option value="1d">1D</option><option value="1w">1W</option></select></div>
+        <div><label>History Interval</label><select id="polyInterval"><option value="1h">1H</option><option value="6h">6H</option><option value="1d">1D</option><option value="1w">1W</option></select></div><div><label>Stake / Call %</label><input id="polyStakePct" value="12" type="number" min="1" max="50"></div><div><label>Target Odds</label><input id="polyTargetOdds" value="0.04" type="number" min="0.01" max="0.30" step="0.01"></div><div><label>Stop Odds</label><input id="polyStopOdds" value="0.03" type="number" min="0.01" max="0.30" step="0.01"></div>
       </div>
       <div class="btns">
         <button onclick="fetchRealPolyMarkets()">Fetch Real Markets</button>
@@ -1789,7 +1789,7 @@ setLiveButtons(false);
         <button class="danger" onclick="clearHistory()">Clear History</button>
       </div>
       <div id="polyStatus" class="statusline">Status: belum fetch market. Klik <b>Fetch Real Markets</b> dulu.</div>
-      <div class="note">Live market diambil dari Polymarket Gamma API. Backtest mengambil price history dari CLOB <code>/prices-history</code> memakai asset/token ID market.</div>
+      <div class="note">Live market diambil dari Polymarket Gamma API. Backtest mengambil price history CLOB. Setting default sudah dibuat lebih aktif: stake 12%, target odds 0.04, stop odds 0.03.</div>
     </div>
 
     <div class="card">
@@ -1975,9 +1975,12 @@ function extractMarketsFromMarkets(markets){
 
 function getPolyModeParams(){
   const mode=document.getElementById('polyMode')?.value||'Balanced AI';
-  if(mode==='Strict Quality')return{minConf:72,target:.12,stop:.06};
-  if(mode==='Contrarian')return{minConf:63,target:.10,stop:.07,contrarian:true};
-  return{minConf:65,target:.10,stop:.07};
+  const userTarget=Number(document.getElementById('polyTargetOdds')?.value||0.04);
+  const userStop=Number(document.getElementById('polyStopOdds')?.value||0.03);
+  const base={minConf:58,target:userTarget,stop:userStop};
+  if(mode==='Strict Quality')return{...base,minConf:65,target:Math.max(userTarget,0.05),stop:userStop};
+  if(mode==='Contrarian')return{...base,minConf:55,target:userTarget,stop:userStop,contrarian:true};
+  return base;
 }
 function buildPolySignal(m){
   const params=getPolyModeParams();
@@ -2036,56 +2039,121 @@ function openPolyCall(){
   table.appendChild(row);
 }
 async function fetchPriceHistory(token,startTs,endTs,interval){
-  const url=`https://clob.polymarket.com/prices-history?market=${encodeURIComponent(token)}&startTs=${startTs}&endTs=${endTs}&interval=${interval}`;
-  const res=await fetch(url);
-  if(!res.ok) throw new Error('history HTTP '+res.status);
-  const j=await res.json();
-  return (j.history||[]).map(x=>({t:Number(x.t)*1000,p:Number(x.p)})).filter(x=>Number.isFinite(x.p));
+  const fidMap={ '1h':60, '6h':360, '1d':1440, '1w':10080 };
+  const fidelity=fidMap[interval] || 60;
+
+  async function tryUrl(url){
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('history HTTP '+res.status);
+    const j=await res.json();
+    return (j.history||[]).map(x=>({t:Number(x.t)*1000,p:Number(x.p)})).filter(x=>Number.isFinite(x.p));
+  }
+
+  const tokenEnc=encodeURIComponent(token);
+  const urls=[
+    `https://clob.polymarket.com/prices-history?market=${tokenEnc}&startTs=${startTs}&endTs=${endTs}&interval=${interval}&fidelity=${fidelity}`,
+    `https://clob.polymarket.com/prices-history?market=${tokenEnc}&startTs=${startTs}&endTs=${endTs}&fidelity=${fidelity}`,
+    `https://clob.polymarket.com/prices-history?market=${tokenEnc}&interval=max&fidelity=${fidelity}`,
+    `https://clob.polymarket.com/prices-history?market=${tokenEnc}&interval=1m&fidelity=60`
+  ];
+
+  let lastErr=null;
+  for(const url of urls){
+    try{
+      const hist=await tryUrl(url);
+      if(hist.length>=2) return hist;
+    }catch(e){ lastErr=e; }
+  }
+  if(lastErr) console.warn('history fallback failed', lastErr);
+  return [];
 }
+
 async function runPolyBacktest(){
   if(!polyMarkets.length) await fetchRealPolyMarkets();
   if(!polyMarkets.length) return;
+
   const bal0=Number(document.getElementById('polyBalance').value||1000);
-  const startTs=Math.floor(new Date(document.getElementById('polyFrom').value||'2025-01-01').getTime()/1000);
-  const endTs=Math.floor(new Date(document.getElementById('polyTo').value||new Date()).getTime()/1000);
+  const startDate=new Date(document.getElementById('polyFrom').value||'2025-01-01');
+  const userEndDate=new Date(document.getElementById('polyTo').value||new Date());
+  const now=new Date();
+  const effectiveEndDate=userEndDate>now ? now : userEndDate;
+
+  if(startDate>=now){
+    setStatus('<span style="color:#fbbf24">Tanggal from berada di masa depan, jadi history real belum ada. Turunkan From Date.</span>');
+    return;
+  }
+
+  const startTs=Math.floor(startDate.getTime()/1000);
+  const endTs=Math.floor(effectiveEndDate.getTime()/1000);
   const interval=document.getElementById('polyInterval').value||'1h';
   const params=getPolyModeParams();
+
   let balance=bal0, peak=bal0, maxDD=0, wins=0, losses=0, total=0, confSum=0;
-  let labels=['Start'], equity=[bal0], rows=[], byMonth={};
+  let labels=['Start'], equity=[bal0], rows=[], byMonth={}, historiesChecked=0, historiesWithData=0;
+
   setStatus('mengambil price history real dari CLOB...');
-  const candidates=polyMarkets.map(buildPolySignal).filter(s=>s.side!=='WAIT'&&s.token).slice(0,5);
-  for(const sig of candidates){
-    try{
-      const hist=await fetchPriceHistory(sig.token,startTs,endTs,interval);
-      if(hist.length<5) continue;
-      let inPos=false, entry=0, target=0, stop=0, stake=0, openTime=null;
-      for(let i=1;i<hist.length;i++){
-        const prev=hist[i-1].p, price=hist[i].p;
-        if(!inPos){
-          const momentum=price>prev*1.01 || i===1;
-          if(momentum){
-            inPos=true; entry=price; target=Math.min(.96,entry+params.target); stop=Math.max(.04,entry-params.stop); stake=Math.max(5,balance*.025); openTime=hist[i].t; total++; confSum+=sig.conf;
-          }
-        }else{
-          let close=false, win=false;
-          if(price>=target){close=true;win=true;}
-          else if(price<=stop){close=true;win=false;}
-          else if(i===hist.length-1){close=true;win=price>=entry;}
-          if(close){
-            const pnl=win?stake*(price-entry)/Math.max(.05,entry):-stake*(entry-price)/Math.max(.05,entry);
-            balance+=pnl; if(win)wins++; else losses++;
-            peak=Math.max(peak,balance); maxDD=Math.max(maxDD,(peak-balance)/peak*100);
-            const dt=new Date(hist[i].t);
-            const mk=dt.toLocaleDateString('id-ID',{month:'short',year:'2-digit'});
-            byMonth[mk]=(byMonth[mk]||0)+pnl;
-            labels.push(dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})); equity.push(Number(balance.toFixed(2)));
-            rows.push({date:dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}),side:sig.side,market:sig.title,entry,exit:price,result:win?'WIN':'LOSS',pnl});
-            inPos=false;
-          }
-        }
+
+  // Use more candidates and do not drop WAIT markets for history test.
+  const candidates=polyMarkets
+    .map(m=>buildPolySignal(m))
+    .filter(s=>s.token || s.yesToken || s.noToken)
+    .sort((a,b)=>(b.conf||0)-(a.conf||0))
+    .slice(0,18);
+
+  for(const sig0 of candidates){
+    let sig=sig0;
+    // If AI says WAIT, still pick the stronger side for backtest history availability,
+    // but keep confidence low so it is visible in results.
+    if(sig.side==='WAIT'){
+      const rawSide=(sig.yes||0)>=(sig.no||0)?'YES':'NO';
+      const entry=rawSide==='YES'?sig.yes:sig.no;
+      sig={...sig,side:'BUY '+rawSide,rawSide,entry,target:Math.min(.96,entry+params.target),stop:Math.max(.04,entry-params.stop),token:rawSide==='YES'?sig.yesToken:sig.noToken};
+    }
+
+    const token=sig.token || (sig.rawSide==='YES'?sig.yesToken:sig.noToken);
+    if(!token) continue;
+
+    historiesChecked++;
+    const hist=await fetchPriceHistory(token,startTs,endTs,interval);
+    if(hist.length<2) continue;
+    historiesWithData++;
+
+    // Simulate multiple calls from real historical prices.
+    const step=Math.max(2,Math.floor(hist.length/8));
+    for(let i=0;i<hist.length-2;i+=step){
+      const entry=hist[i].p;
+      const target=Math.min(.96,entry+params.target);
+      const stop=Math.max(.04,entry-params.stop);
+      const stake=Math.max(5,balance*(Number(document.getElementById('polyStakePct')?.value||12)/100));
+      let exit=hist[Math.min(hist.length-1,i+step)].p;
+      let result=null, closeIndex=Math.min(hist.length-1,i+step);
+
+      for(let j=i+1;j<hist.length && j<=i+step*2;j++){
+        if(hist[j].p>=target){ exit=hist[j].p; result='WIN'; closeIndex=j; break; }
+        if(hist[j].p<=stop){ exit=hist[j].p; result='LOSS'; closeIndex=j; break; }
       }
-    }catch(e){ console.warn('history fail',sig.title,e); }
+      if(!result) result=exit>=entry?'WIN':'LOSS';
+
+      const pnl=result==='WIN'
+        ? stake*(exit-entry)/Math.max(.05,entry)
+        : -stake*(entry-exit)/Math.max(.05,entry);
+
+      balance+=pnl;
+      if(result==='WIN') wins++; else losses++;
+      total++; confSum+=sig.conf||60;
+
+      peak=Math.max(peak,balance);
+      maxDD=Math.max(maxDD,(peak-balance)/peak*100);
+
+      const dt=new Date(hist[closeIndex].t);
+      const mk=dt.toLocaleDateString('id-ID',{month:'short',year:'2-digit'});
+      byMonth[mk]=(byMonth[mk]||0)+pnl;
+      labels.push(dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}));
+      equity.push(Number(balance.toFixed(2)));
+      rows.push({date:dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}),side:sig.side,market:sig.title,entry,exit,result,pnl});
+    }
   }
+
   document.getElementById('polyBal').textContent=money(balance);
   document.getElementById('polyProfit').textContent=(balance-bal0>=0?'+':'')+money(balance-bal0);
   document.getElementById('polyProfit').className=balance>=bal0?'good':'bad';
@@ -2094,9 +2162,11 @@ async function runPolyBacktest(){
   document.getElementById('polyClosedCalls').textContent=wins+losses;
   document.getElementById('polyAvgConf').textContent=total?(confSum/total).toFixed(0)+'%':'--%';
   document.getElementById('polyDD').textContent=maxDD.toFixed(1)+'%';
+
   const months=Object.entries(byMonth).sort((a,b)=>b[1]-a[1]);
   document.getElementById('polyBestMonth').textContent=months[0]?.[0]||'--';
   document.getElementById('polyWorstMonth').textContent=months[months.length-1]?.[0]||'--';
+
   const histEl=document.getElementById('polyHistory');
   histEl.innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
   rows.slice(-80).reverse().forEach(r=>{
@@ -2104,9 +2174,16 @@ async function runPolyBacktest(){
     row.innerHTML=`<span>${r.date}</span><span class="${r.side.includes('YES')?'good':'bad'}">${r.side}</span><span>${r.market}</span><span>${r.entry.toFixed(2)}</span><span>${r.exit.toFixed(2)}</span><span><span class="badge ${r.result==='WIN'?'win':'loss'}">${r.result}</span></span><span class="${r.pnl>=0?'good':'bad'}">${r.pnl>=0?'+':''}${money(r.pnl)}</span>`;
     histEl.appendChild(row);
   });
+
   polyEquityLabels=labels; polyEquityData=equity; renderPolyChart();
-  setStatus('backtest selesai memakai real CLOB price history. Calls: <b>'+total+'</b>');
+
+  if(total===0){
+    setStatus('<span style="color:#fbbf24">history dicek: '+historiesChecked+' token, yang punya data: '+historiesWithData+', tetapi belum ada call terbentuk. Coba kosongkan Market Filter atau pakai From Date lebih lama.</span>');
+  }else{
+    setStatus('backtest selesai memakai real CLOB price history. Histories with data: <b>'+historiesWithData+'</b> · Calls: <b>'+total+'</b>');
+  }
 }
+
 function clearHistory(){
   document.getElementById('polyHistory').innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
 }
