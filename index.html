@@ -2,136 +2,48 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Future Terminal — Trade Future + Poly</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Future Terminal — Binance + Polymarket Real API</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-:root {
-  --bg:#080d14;
-  --card:#111827;
-  --card2:#0f172a;
-  --border:#26354d;
-  --border2:#334155;
-  --text:#f8fafc;
-  --muted:#94a3b8;
-  --muted2:#64748b;
-  --green:#16a34a;
-  --green2:#4ade80;
-  --red:#dc2626;
-  --red2:#f87171;
-  --blue:#2563eb;
-  --yellow:#f59e0b;
-}
+:root{--bg:#080d14;--card:#111827;--card2:#0f172a;--border:#26354d;--border2:#334155;--text:#f8fafc;--muted:#94a3b8;--muted2:#64748b;--green:#4ade80;--red:#f87171;--blue:#2563eb;--yellow:#fbbf24}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;min-height:100vh}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
 .shell{max-width:1180px;margin:auto;padding:18px 14px 60px}
 .header{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #1f2937}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:1000;font-size:20px}
-h1{font-size:21px}
-.sub{font-size:12px;color:var(--muted);margin-top:3px}
-.pill{font-size:11px;font-weight:900;color:#4ade80;border:1px solid #16a34a66;background:#16a34a14;border-radius:999px;padding:7px 11px;white-space:nowrap}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.tab{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:14px 16px;cursor:pointer;color:#cbd5e1;transition:.15s}
-.tab.active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#3b82f6;color:white}
-.tab b{display:block;font-size:16px;margin-bottom:4px}
-.tab span{font-size:11px;opacity:.78}
-.section{display:none}
-.section.active{display:block}
-.trade-frame-card{background:#0f0f0f;border:1px solid var(--border);border-radius:16px;overflow:hidden}
-#tradeFrame{width:100%;border:0;display:block;background:#0f0f0f;min-height:1800px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}
-.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:900;margin-bottom:12px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.metric{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px}
-.metric small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:6px}
-.metric b{font-size:20px;font-weight:1000}
-.metric span{display:block;color:var(--muted2);font-size:10px;margin-top:4px}
-.good{color:var(--green2)!important}
-.bad{color:var(--red2)!important}
-.yellow{color:#fbbf24!important}
-.blue{color:#60a5fa!important}
-.controls{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
-label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px}
-input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:white}
-button{cursor:pointer;font-weight:850;background:#2563eb;border-color:#2563eb}
-.btns{display:flex;gap:8px;flex-wrap:wrap}
-.btns button{width:auto}
-.danger{background:#7f1d1d;border-color:#991b1b}
-.green{background:#166534;border-color:#15803d}
-.signal{background:linear-gradient(180deg,#0f172a,#0b1120);border:1px solid #334155;border-radius:14px;padding:15px}
-.signal-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
-.action{font-size:30px;font-weight:1000}
-.score{background:#111827;border:1px solid #334155;border-radius:10px;padding:8px 12px;font-weight:900;color:#cbd5e1}
-.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.level{background:#111827;border:1px solid #334155;border-radius:10px;padding:10px}
-.level small{color:var(--muted);font-size:9px;text-transform:uppercase}
-.level b{display:block;margin-top:5px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chartbox{height:310px;background:#0b0f14;border:1px solid var(--border);border-radius:12px;padding:10px}
-.table{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#0b1120}
-.row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #1f2a3d;font-size:11px;align-items:center}
-.row:last-child{border-bottom:none}
-.head{background:#0f172a;color:var(--muted);font-weight:900;text-transform:uppercase;font-size:10px}
-.poly-row{grid-template-columns:1.3fr 58px 58px 75px 90px 70px 75px 60px}
-.call-row{grid-template-columns:70px 80px 1.2fr 75px 75px 75px 70px 80px}
-.hist-row{grid-template-columns:80px 80px 1.2fr 75px 75px 75px 80px}
-.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}
-.open{background:#2563eb22;color:#93c5fd;border:1px solid #2563eb66}
-.win{background:#16a34a22;color:#4ade80;border:1px solid #16a34a66}
-.loss{background:#dc262622;color:#f87171;border:1px solid #dc262666}
-.wait{background:#d9770622;color:#fbbf24;border:1px solid #d9770666}
-.note{font-size:10px;color:var(--muted2);line-height:1.6;margin-top:10px}
-.market{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
-.market-top{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}
-.tag{font-size:9px;color:#93c5fd;background:#2563eb22;border:1px solid #2563eb66;padding:4px 8px;border-radius:999px}
-.probs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.prob{background:#111827;border:1px solid #334155;border-radius:10px;padding:10px}
-.prob small{color:var(--muted);font-size:9px}
-.prob b{display:block;font-size:18px;margin-top:3px}
-.bar{height:6px;background:#1f2937;border-radius:999px;overflow:hidden;margin-top:7px}
-.yes{height:100%;background:var(--green)}
-.no{height:100%;background:var(--red)}
-.live-status{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:900;color:#4ade80;background:#16a34a14;border:1px solid #16a34a66;border-radius:999px;padding:5px 10px}
-@media(max-width:900px){
-  .grid2,.grid4,.grid5,.controls,.levels{grid-template-columns:1fr 1fr}
-  .poly-row,.call-row,.hist-row{grid-template-columns:70px 1fr 70px 70px}
-  .poly-row span:nth-child(n+5),.call-row span:nth-child(n+5),.hist-row span:nth-child(n+5){display:none}
-}
-@media(max-width:560px){
-  .tabs,.grid2,.grid4,.grid5,.controls,.levels,.probs{grid-template-columns:1fr}
-  .header{align-items:flex-start;flex-direction:column}
-}
+.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:1000;font-size:20px}
+h1{font-size:21px}.sub{font-size:12px;color:var(--muted);margin-top:3px}.pill{font-size:11px;font-weight:900;color:var(--green);border:1px solid #16a34a66;background:#16a34a14;border-radius:999px;padding:7px 11px;white-space:nowrap}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.tab{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:14px 16px;cursor:pointer;color:#cbd5e1;transition:.15s}.tab.active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#3b82f6;color:white}.tab b{display:block;font-size:16px;margin-bottom:4px}.tab span{font-size:11px;opacity:.78}
+.section{display:none}.section.active{display:block}
+.trade-frame-card{background:#0f0f0f;border:1px solid var(--border);border-radius:16px;overflow:hidden}#tradeFrame{width:100%;border:0;display:block;background:#0f0f0f;min-height:1800px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:900;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.metric{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px}.metric small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:6px}.metric b{font-size:19px;font-weight:1000}.metric span{display:block;color:var(--muted2);font-size:10px;margin-top:4px}
+.good{color:var(--green)!important}.bad{color:var(--red)!important}.yellow{color:var(--yellow)!important}.blue{color:#60a5fa!important}
+.controls{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px}label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px}input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:white}button{cursor:pointer;font-weight:850;background:#2563eb;border-color:#2563eb}.btns{display:flex;gap:8px;flex-wrap:wrap}.btns button{width:auto}.danger{background:#7f1d1d;border-color:#991b1b}.green{background:#166534;border-color:#15803d}.neutralBtn{background:#0f172a;border-color:#334155}
+.signal{background:linear-gradient(180deg,#0f172a,#0b1120);border:1px solid #334155;border-radius:14px;padding:15px}.signal-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.action{font-size:30px;font-weight:1000}.score{background:#111827;border:1px solid #334155;border-radius:10px;padding:8px 12px;font-weight:900;color:#cbd5e1}.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.level{background:#111827;border:1px solid #334155;border-radius:10px;padding:10px}.level small{color:var(--muted);font-size:9px;text-transform:uppercase}.level b{display:block;margin-top:5px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reason-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.reason-box{background:#111827;border:1px solid #334155;border-radius:10px;padding:10px}.reason-box small{display:block;color:#94a3b8;font-size:9px;text-transform:uppercase;margin-bottom:5px}.reason-box b{font-size:13px}
+.table{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#0b1120}.row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #1f2a3d;font-size:11px;align-items:center}.row:last-child{border-bottom:none}.head{background:#0f172a;color:var(--muted);font-weight:900;text-transform:uppercase;font-size:10px}
+.market-row{grid-template-columns:1.4fr 60px 60px 78px 78px 86px 82px 68px}.call-row{grid-template-columns:70px 90px 1.2fr 75px 75px 75px 70px 80px}.hist-row{grid-template-columns:80px 90px 1.2fr 75px 75px 75px 80px}.log-row{grid-template-columns:70px 90px 1fr 80px 80px 80px}
+.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.open{background:#2563eb22;color:#93c5fd;border:1px solid #2563eb66}.win{background:#16a34a22;color:#4ade80;border:1px solid #16a34a66}.loss{background:#dc262622;color:#f87171;border:1px solid #dc262666}.wait{background:#d9770622;color:#fbbf24;border:1px solid #d9770666}
+.note{font-size:10px;color:var(--muted2);line-height:1.6;margin-top:10px}.chartbox{height:310px;background:#0b0f14;border:1px solid var(--border);border-radius:12px;padding:10px}.statusline{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}.statusline b{color:white}
+@media(max-width:900px){.grid2,.grid4,.grid5,.grid6,.controls,.levels,.reason-grid{grid-template-columns:1fr 1fr}.market-row,.call-row,.hist-row,.log-row{grid-template-columns:70px 1fr 70px 70px}.market-row span:nth-child(n+5),.call-row span:nth-child(n+5),.hist-row span:nth-child(n+5),.log-row span:nth-child(n+5){display:none}}
+@media(max-width:560px){.tabs,.grid2,.grid4,.grid5,.grid6,.controls,.levels,.reason-grid{grid-template-columns:1fr}.header{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
 <div class="shell">
   <div class="header">
-    <div class="brand">
-      <div class="logo">F</div>
-      <div>
-        <h1>Future Terminal</h1>
-        <div class="sub">Full gabungan: Trade Future lengkap + Poly AI Calls</div>
-      </div>
-    </div>
-    <div class="pill">DEPLOY READY</div>
+    <div class="brand"><div class="logo">F</div><div><h1>Future Terminal</h1><div class="sub">Futures pakai real Binance API · Poly pakai real Polymarket API</div></div></div>
+    <div class="pill">REAL API MODE</div>
   </div>
-
   <div class="tabs">
-    <div class="tab active" onclick="showTab('trade',this)">
-      <b>Trade Future</b>
-      <span>Fitur futures lengkap yang sudah kita bangun</span>
-    </div>
-    <div class="tab" onclick="showTab('poly',this)">
-      <b>Poly</b>
-      <span>Live AI call, active call, history, Poly backtest</span>
-    </div>
+    <div class="tab active" onclick="showTab('trade',this)"><b>Trade Future</b><span>Fitur futures lengkap real Binance</span></div>
+    <div class="tab" onclick="showTab('poly',this)"><b>Poly</b><span>Real Polymarket markets + CLOB history</span></div>
   </div>
 
   <section id="trade" class="section active">
-    <div class="trade-frame-card">
-      <iframe id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
+    <div class="trade-frame-card"><iframe id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;id&quot;&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;UTF-8&quot;&gt;
@@ -1855,36 +1767,35 @@ updateLive2StrategyInfo();
 setLiveButtons(false);
 &lt;/script&gt;
 &lt;/body&gt;
-&lt;/html&gt;" onload="resizeTradeFrame()"></iframe>
-    </div>
+&lt;/html&gt;" onload="resizeTradeFrame()"></iframe></div>
   </section>
 
   <section id="poly" class="section">
     <div class="card">
-      <div class="card-title">Poly Controls</div>
+      <div class="card-title">Poly Real API Controls</div>
       <div class="controls">
-        <div><label>AI Call Mode</label><select id="polyMode"><option>Balanced AI</option><option>Strict Quality</option><option>Contrarian</option></select></div>
-        <div><label>Category</label><select id="polyCategory"><option>Crypto</option><option>Macro</option><option>Politics</option><option>Sports</option></select></div>
+        <div><label>AI Mode</label><select id="polyMode"><option>Balanced AI</option><option>Strict Quality</option><option>Contrarian</option></select></div>
+        <div><label>Market Filter</label><input id="polySearch" value="bitcoin" placeholder="bitcoin, eth, fed..."></div>
         <div><label>Balance</label><input id="polyBalance" value="1000" type="number"></div>
-        <div><label>From Date</label><input id="polyFrom" type="date"></div>
-        <div><label>To Date</label><input id="polyTo" type="date"></div>
+        <div><label>From Date</label><input id="polyFrom" type="date" value="2025-01-01"></div>
+        <div><label>To Date</label><input id="polyTo" type="date" value="2025-12-31"></div>
+        <div><label>History Interval</label><select id="polyInterval"><option value="1h">1H</option><option value="6h">6H</option><option value="1d">1D</option><option value="1w">1W</option></select></div>
       </div>
       <div class="btns">
-        <button onclick="scanPoly()">Scan Live Open Market</button>
-        <button class="green" onclick="openPolyCall()">Open AI Call</button>
-        <button onclick="runPolyBacktest()">Run Poly Backtest</button>
+        <button onclick="fetchRealPolyMarkets()">Fetch Real Markets</button>
+        <button class="green" onclick="scanPoly()">Generate Real Live Signal</button>
+        <button class="neutralBtn" onclick="openPolyCall()">Open AI Call</button>
+        <button onclick="runPolyBacktest()">Run Real History Backtest</button>
         <button class="danger" onclick="clearHistory()">Clear History</button>
       </div>
-      <div class="note">Poly dibuat sebagai dashboard sendiri: AI live signal, active call, history lengkap, balance, date range, dan backtest equity.</div>
+      <div id="polyStatus" class="statusline">Status: belum fetch market. Klik <b>Fetch Real Markets</b> dulu.</div>
+      <div class="note">Live market diambil dari Polymarket Gamma API. Backtest mengambil price history dari CLOB <code>/prices-history</code> memakai asset/token ID market.</div>
     </div>
 
     <div class="card">
-      <div class="card-title">Poly Live Signal — AI Call</div>
+      <div class="card-title">Poly Live Signal — Real Market AI Call</div>
       <div class="signal">
-        <div class="signal-top">
-          <div id="polyAction" class="action yellow">WAIT</div>
-          <div id="polyScore" class="score">Confidence --%</div>
-        </div>
+        <div class="signal-top"><div id="polyAction" class="action yellow">WAIT</div><div id="polyScore" class="score">Confidence --%</div></div>
         <div class="levels">
           <div class="level"><small>Market</small><b id="polyMarket">--</b></div>
           <div class="level"><small>Entry Odds</small><b id="polyEntry">--</b></div>
@@ -1892,171 +1803,319 @@ setLiveButtons(false);
           <div class="level"><small>Stop</small><b id="polyStop">--</b></div>
         </div>
       </div>
-      <div class="note">AI membaca open market, odds YES/NO, volume, liquidity, dan bias futures untuk keputusan BUY YES / BUY NO / WAIT.</div>
+      <div class="reason-grid">
+        <div class="reason-box"><small>Odds</small><b id="polyReasonOdds">--</b></div>
+        <div class="reason-box"><small>Volume</small><b id="polyReasonVol">--</b></div>
+        <div class="reason-box"><small>Liquidity</small><b id="polyReasonLiq">--</b></div>
+        <div class="reason-box"><small>Token ID</small><b id="polyReasonToken">--</b></div>
+      </div>
     </div>
 
     <div class="grid5">
       <div class="metric"><small>Poly Balance</small><b id="polyBal" class="good">$1,000</b><span>paper</span></div>
-      <div class="metric"><small>AI Profit</small><b id="polyProfit" class="good">+$142</b><span>selected range</span></div>
-      <div class="metric"><small>Win Rate</small><b id="polyWR">68%</b><span>closed calls</span></div>
-      <div class="metric"><small>Active Calls</small><b id="activeCount" class="blue">2</b><span>open</span></div>
-      <div class="metric"><small>Best Market</small><b class="good">BTC</b><span>crypto</span></div>
+      <div class="metric"><small>AI Profit</small><b id="polyProfit" class="good">$0</b><span>history backtest</span></div>
+      <div class="metric"><small>Win Rate</small><b id="polyWR">--%</b><span>closed calls</span></div>
+      <div class="metric"><small>Real Markets</small><b id="realMarketCount" class="blue">0</b><span>loaded</span></div>
+      <div class="metric"><small>Active Calls</small><b id="activeCount" class="blue">0</b><span>open</span></div>
     </div>
 
     <div class="card">
-      <div class="card-title">Live Open Markets — AI Scanner</div>
-      <div class="table">
-        <div class="row poly-row head"><span>Market</span><span>YES</span><span>NO</span><span>Vol</span><span>Signal</span><span>Entry</span><span>Status</span><span>Conf</span></div>
-        <div class="row poly-row"><span>BTC above $120k in 2026?</span><span class="good">64%</span><span class="bad">36%</span><span>$2.4M</span><span class="good">BUY YES</span><span>0.64</span><span><span class="badge wait">READY</span></span><span>78%</span></div>
-        <div class="row poly-row"><span>ETH new ATH this year?</span><span>47%</span><span>53%</span><span>$1.1M</span><span class="bad">BUY NO</span><span>0.53</span><span><span class="badge wait">READY</span></span><span>66%</span></div>
-        <div class="row poly-row"><span>Fed cuts rates next meeting?</span><span class="good">58%</span><span class="bad">42%</span><span>$8.1M</span><span class="yellow">WAIT</span><span>--</span><span><span class="badge wait">WAIT</span></span><span>54%</span></div>
+      <div class="card-title">Backtest Summary</div>
+      <div class="grid6">
+        <div class="metric"><small>Total Calls</small><b id="polyTotalCalls">--</b><span>generated</span></div>
+        <div class="metric"><small>Closed Calls</small><b id="polyClosedCalls">--</b><span>TP/SL</span></div>
+        <div class="metric"><small>Avg Confidence</small><b id="polyAvgConf">--%</b><span>AI score</span></div>
+        <div class="metric"><small>Best Month</small><b id="polyBestMonth" class="good">--</b><span>highest pnl</span></div>
+        <div class="metric"><small>Worst Month</small><b id="polyWorstMonth" class="bad">--</b><span>lowest pnl</span></div>
+        <div class="metric"><small>Max DD</small><b id="polyDD" class="yellow">--%</b><span>paper equity</span></div>
       </div>
     </div>
+
+    <div class="card"><div class="card-title">Real Polymarket Open Markets</div><div id="realMarketsTable" class="table"><div class="row market-row head"><span>Market</span><span>YES</span><span>NO</span><span>Volume</span><span>Liquidity</span><span>AI Signal</span><span>Entry</span><span>Conf</span></div></div></div>
 
     <div class="grid2">
-      <div class="card">
-        <div class="card-title">Active Poly Calls</div>
-        <div id="activeCalls" class="table">
-          <div class="row call-row head"><span>Time</span><span>Side</span><span>Market</span><span>Entry</span><span>Now</span><span>Target</span><span>Status</span><span>PnL</span></div>
-          <div class="row call-row"><span>09:15</span><span class="good">BUY YES</span><span>BTC above $120k in 2026?</span><span>0.61</span><span>0.64</span><span>0.72</span><span><span class="badge open">OPEN</span></span><span class="good">+$30</span></div>
-          <div class="row call-row"><span>10:40</span><span class="bad">BUY NO</span><span>ETH new ATH this year?</span><span>0.55</span><span>0.53</span><span>0.44</span><span><span class="badge open">OPEN</span></span><span class="good">+$18</span></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Polymarket Scanner</div>
-        <div class="market">
-          <div class="market-top"><b>Will Bitcoin hit $120k in 2026?</b><span class="tag">Crypto</span></div>
-          <div class="probs">
-            <div class="prob"><small>YES</small><b class="good">64%</b><div class="bar"><div class="yes" style="width:64%"></div></div></div>
-            <div class="prob"><small>NO</small><b class="bad">36%</b><div class="bar"><div class="no" style="width:36%"></div></div></div>
-          </div>
-        </div>
-        <div class="market">
-          <div class="market-top"><b>Fed cuts rates next meeting?</b><span class="tag">Macro</span></div>
-          <div class="probs">
-            <div class="prob"><small>YES</small><b class="good">58%</b><div class="bar"><div class="yes" style="width:58%"></div></div></div>
-            <div class="prob"><small>NO</small><b class="bad">42%</b><div class="bar"><div class="no" style="width:42%"></div></div></div>
-          </div>
-        </div>
-      </div>
+      <div class="card"><div class="card-title">Active Poly Calls</div><div id="activeCalls" class="table"><div class="row call-row head"><span>Time</span><span>Side</span><span>Market</span><span>Entry</span><span>Now</span><span>Target</span><span>Status</span><span>PnL</span></div></div></div>
+      <div class="card"><div class="card-title">Live Signal Log</div><div id="polyLiveLog" class="table"><div class="row log-row head"><span>Time</span><span>Call</span><span>Market</span><span>Entry</span><span>Target</span><span>Conf</span></div></div></div>
     </div>
 
-    <div class="card">
-      <div class="card-title">Poly AI Backtest Equity</div>
-      <div class="chartbox"><canvas id="polyChart"></canvas></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Complete Poly Call History</div>
-      <div id="polyHistory" class="table">
-        <div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>
-        <div class="row hist-row"><span>12 Jun</span><span class="good">BUY YES</span><span>BTC above $120k?</span><span>0.59</span><span>0.67</span><span><span class="badge win">WIN</span></span><span class="good">+$80</span></div>
-        <div class="row hist-row"><span>11 Jun</span><span class="bad">BUY NO</span><span>ETH ATH?</span><span>0.54</span><span>0.48</span><span><span class="badge win">WIN</span></span><span class="good">+$60</span></div>
-        <div class="row hist-row"><span>10 Jun</span><span class="good">BUY YES</span><span>Fed cuts rates?</span><span>0.57</span><span>0.53</span><span><span class="badge loss">LOSS</span></span><span class="bad">-$40</span></div>
-      </div>
-    </div>
+    <div class="card"><div class="card-title">Poly Real History Backtest Equity</div><div class="chartbox"><canvas id="polyChart"></canvas></div></div>
+    <div class="card"><div class="card-title">Complete Poly Backtest History</div><div id="polyHistory" class="table"><div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div></div></div>
   </section>
 </div>
 
 <script>
-let currentPoly=null, polyChart=null;
+let polyMarkets=[], currentPoly=null, polyChart=null;
+let polyEquityLabels=['Start'], polyEquityData=[1000];
 
-function showTab(id, el) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  el.classList.add('active');
-  if (id === 'poly') setTimeout(renderPolyChart, 80);
-  if (id === 'trade') setTimeout(resizeTradeFrame, 250);
+function showTab(id, el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active'); el.classList.add('active');
+  if(id==='poly') setTimeout(renderPolyChart,80);
+  if(id==='trade') setTimeout(resizeTradeFrame,250);
+}
+function resizeTradeFrame(){
+  const frame=document.getElementById('tradeFrame');
+  try{const doc=frame.contentWindow.document;frame.style.height=(Math.max(1800,doc.documentElement.scrollHeight,doc.body.scrollHeight)+40)+'px';}
+  catch(e){frame.style.height='2300px';}
+}
+setInterval(()=>{if(document.getElementById('trade').classList.contains('active')) resizeTradeFrame();},1500);
+function money(v){return '$'+Number(v||0).toLocaleString('en-US',{maximumFractionDigits:0});}
+function pct(v){return (Number(v||0)*100).toFixed(0)+'%';}
+function safeJson(x, fallback=[]){try{return typeof x==='string'?JSON.parse(x):x||fallback}catch(e){return fallback}}
+function setStatus(t){document.getElementById('polyStatus').innerHTML='Status: '+t;}
+
+function extractMarketsFromEvents(events){
+  const out=[];
+  for(const ev of events){
+    const ms=ev.markets || [];
+    for(const m of ms){
+      if(m.closed || m.active===false) continue;
+      const outcomes=safeJson(m.outcomes,[]);
+      const prices=safeJson(m.outcomePrices,[]);
+      const tokenIds=safeJson(m.clobTokenIds || m.clobTokenIDs || m.clobTokenId,[]);
+      const yesIdx=outcomes.findIndex(o=>String(o).toLowerCase().includes('yes'));
+      const noIdx=outcomes.findIndex(o=>String(o).toLowerCase().includes('no'));
+      const y=yesIdx>=0?Number(prices[yesIdx]):Number(prices[0]);
+      const n=noIdx>=0?Number(prices[noIdx]):Number(prices[1] ?? (1-y));
+      const yToken=yesIdx>=0?tokenIds[yesIdx]:tokenIds[0];
+      const nToken=noIdx>=0?tokenIds[noIdx]:tokenIds[1];
+      if(!Number.isFinite(y) || !yToken) continue;
+      out.push({
+        id:m.id, slug:m.slug, title:m.question || m.title || ev.title || 'Untitled market',
+        eventTitle:ev.title || '', yes:y, no:Number.isFinite(n)?n:1-y,
+        volume:Number(m.volume || m.volumeNum || m.volume24hr || ev.volume || 0),
+        liquidity:Number(m.liquidity || m.liquidityNum || 0),
+        yesToken:yToken, noToken:nToken, endDate:m.endDate || ev.endDate || ''
+      });
+    }
+  }
+  return out;
 }
 
-function resizeTradeFrame() {
-  const frame = document.getElementById('tradeFrame');
-  try {
-    const doc = frame.contentWindow.document;
-    const h = Math.max(1800, doc.documentElement.scrollHeight, doc.body.scrollHeight);
-    frame.style.height = (h + 40) + 'px';
-  } catch(e) {
-    frame.style.height = '2200px';
+async function fetchRealPolyMarkets(){
+  const rawQ=(document.getElementById('polySearch').value||'').trim().toLowerCase();
+  const keywords=rawQ.split(/[\s,]+/).filter(Boolean);
+  setStatus('mengambil data real dari Gamma API...');
+
+  async function getJson(url){
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return await res.json();
+  }
+
+  try{
+    let list=[];
+
+    // Primary: events endpoint. Polymarket docs recommend events because events include markets.
+    const eventsUrl='https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume&ascending=false&limit=100';
+    const events=await getJson(eventsUrl);
+    list=extractMarketsFromEvents(Array.isArray(events)?events:(events.data||[]));
+
+    // Fallback: direct markets endpoint if nested events returns 0.
+    if(!list.length){
+      const marketsUrl='https://gamma-api.polymarket.com/markets?active=true&closed=false&order=volume&ascending=false&limit=100';
+      const markets=await getJson(marketsUrl);
+      list=extractMarketsFromMarkets(Array.isArray(markets)?markets:(markets.data||[]));
+    }
+
+    // OR keyword matching. "bitcoin crypto" means bitcoin OR crypto, not exact full phrase.
+    if(keywords.length){
+      const filtered=list.filter(m=>{
+        const text=(m.title+' '+m.eventTitle+' '+(m.slug||'')).toLowerCase();
+        return keywords.some(k=>text.includes(k));
+      });
+      if(filtered.length) list=filtered;
+    }
+
+    polyMarkets=list
+      .filter(m=>m.yesToken && Number.isFinite(m.yes))
+      .sort((a,b)=>(b.volume||0)-(a.volume||0))
+      .slice(0,50);
+
+    document.getElementById('realMarketCount').textContent=polyMarkets.length;
+    renderRealMarkets();
+
+    if(polyMarkets.length){
+      setStatus('<b>'+polyMarkets.length+'</b> real markets loaded dari Polymarket Gamma API.');
+      setPolySignal(buildPolySignal(polyMarkets[0]));
+    }else{
+      setStatus('<span style="color:#fbbf24">0 market ditemukan. Kosongkan filter/search atau coba kata “btc”, “bitcoin”, “ethereum”, lalu Fetch lagi.</span>');
+    }
+  }catch(e){
+    console.error(e);
+    setStatus('<span style="color:#f87171">gagal fetch Polymarket API: '+e.message+'. Kemungkinan CORS/rate-limit Cloudflare atau endpoint diblokir browser.</span>');
   }
 }
 
-setInterval(() => {
-  if (document.getElementById('trade').classList.contains('active')) resizeTradeFrame();
-}, 1500);
-
-function scanPoly() {
-  const arr = [
-    {side:'BUY YES', cls:'good', m:'BTC above $120k?', entry:.64, target:.74, stop:.58, conf:78},
-    {side:'BUY NO', cls:'bad', m:'ETH ATH this year?', entry:.53, target:.63, stop:.47, conf:66},
-    {side:'WAIT', cls:'yellow', m:'Fed cuts rates?', entry:null, target:null, stop:null, conf:54}
-  ];
-  currentPoly = arr[Math.floor(Math.random()*arr.length)];
-  const a = document.getElementById('polyAction');
-  a.textContent = currentPoly.side;
-  a.className = 'action ' + currentPoly.cls;
-  document.getElementById('polyScore').textContent = 'Confidence ' + currentPoly.conf + '%';
-  document.getElementById('polyMarket').textContent = currentPoly.m;
-  document.getElementById('polyEntry').textContent = currentPoly.entry ? currentPoly.entry.toFixed(2) : '--';
-  document.getElementById('polyTarget').textContent = currentPoly.target ? currentPoly.target.toFixed(2) : '--';
-  document.getElementById('polyStop').textContent = currentPoly.stop ? currentPoly.stop.toFixed(2) : '--';
+function extractMarketsFromMarkets(markets){
+  const out=[];
+  for(const m of markets){
+    if(m.closed || m.active===false) continue;
+    const outcomes=safeJson(m.outcomes,[]);
+    const prices=safeJson(m.outcomePrices,[]);
+    const tokenIds=safeJson(m.clobTokenIds || m.clobTokenIDs || m.clobTokenId,[]);
+    const yesIdx=outcomes.findIndex(o=>String(o).toLowerCase().includes('yes'));
+    const noIdx=outcomes.findIndex(o=>String(o).toLowerCase().includes('no'));
+    const y=yesIdx>=0?Number(prices[yesIdx]):Number(prices[0]);
+    const n=noIdx>=0?Number(prices[noIdx]):Number(prices[1] ?? (1-y));
+    const yToken=yesIdx>=0?tokenIds[yesIdx]:tokenIds[0];
+    const nToken=noIdx>=0?tokenIds[noIdx]:tokenIds[1];
+    if(!Number.isFinite(y) || !yToken) continue;
+    out.push({
+      id:m.id, slug:m.slug, title:m.question || m.title || 'Untitled market',
+      eventTitle:m.eventTitle || '', yes:y, no:Number.isFinite(n)?n:1-y,
+      volume:Number(m.volume || m.volumeNum || m.volume24hr || 0),
+      liquidity:Number(m.liquidity || m.liquidityNum || 0),
+      yesToken:yToken, noToken:nToken, endDate:m.endDate || ''
+    });
+  }
+  return out;
 }
 
-function openPolyCall() {
-  if (!currentPoly) scanPoly();
-  if (currentPoly.side === 'WAIT') return;
-  const table = document.getElementById('activeCalls');
-  const row = document.createElement('div');
-  row.className = 'row call-row';
-  row.innerHTML = `<span>Now</span><span class="${currentPoly.cls}">${currentPoly.side}</span><span>${currentPoly.m}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.target.toFixed(2)}</span><span><span class="badge open">OPEN</span></span><span class="yellow">$0</span>`;
-  table.appendChild(row);
-  document.getElementById('activeCount').textContent = Number(document.getElementById('activeCount').textContent) + 1;
+function getPolyModeParams(){
+  const mode=document.getElementById('polyMode')?.value||'Balanced AI';
+  if(mode==='Strict Quality')return{minConf:72,target:.12,stop:.06};
+  if(mode==='Contrarian')return{minConf:63,target:.10,stop:.07,contrarian:true};
+  return{minConf:65,target:.10,stop:.07};
 }
-
-function runPolyBacktest() {
-  const bal = Number(document.getElementById('polyBalance').value || 1000);
-  document.getElementById('polyBal').textContent = '$' + bal.toLocaleString();
-  document.getElementById('polyProfit').textContent = '+$' + Math.round(bal * .142).toLocaleString();
-  renderPolyChart();
+function buildPolySignal(m){
+  const params=getPolyModeParams();
+  let side=m.yes>=m.no?'YES':'NO';
+  if(params.contrarian && Math.max(m.yes,m.no)>0.75) side=side==='YES'?'NO':'YES';
+  const entry=side==='YES'?m.yes:m.no;
+  const volScore=Math.min(30,Math.log10(Math.max(1,m.volume))*4);
+  const liqScore=Math.min(25,Math.log10(Math.max(1,m.liquidity))*4);
+  let conf=Math.round(entry*55+volScore+liqScore);
+  conf=Math.max(45,Math.min(94,conf));
+  if(conf<params.minConf) return {...m,side:'WAIT',rawSide:null,entry:null,target:null,stop:null,conf,token:null};
+  const token=side==='YES'?m.yesToken:m.noToken;
+  return {...m,side:'BUY '+side,rawSide:side,entry,target:Math.min(.96,entry+params.target),stop:Math.max(.04,entry-params.stop),conf,token};
 }
-
-function clearHistory() {
-  document.getElementById('polyHistory').innerHTML = '<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
-}
-
-function renderPolyChart() {
-  const ctx = document.getElementById('polyChart');
-  if (!ctx || !window.Chart) return;
-  if (polyChart) polyChart.destroy();
-  polyChart = new Chart(ctx, {
-    type:'line',
-    data:{
-      labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-      datasets:[{
-        data:[1000,1040,1015,1090,1125,1142,1180,1165,1210,1255,1280,1318],
-        borderColor:'#60a5fa',
-        backgroundColor:'rgba(96,165,250,.14)',
-        fill:true,
-        tension:.35,
-        pointRadius:0
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}},
-        y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}}
-      }
-    }
+function renderRealMarkets(){
+  const el=document.getElementById('realMarketsTable');
+  el.innerHTML='<div class="row market-row head"><span>Market</span><span>YES</span><span>NO</span><span>Volume</span><span>Liquidity</span><span>AI Signal</span><span>Entry</span><span>Conf</span></div>';
+  polyMarkets.slice(0,30).forEach(m=>{
+    const s=buildPolySignal(m);
+    const row=document.createElement('div'); row.className='row market-row';
+    row.onclick=()=>setPolySignal(s);
+    row.style.cursor='pointer';
+    row.innerHTML=`<span>${m.title}</span><span class="good">${pct(m.yes)}</span><span class="bad">${pct(m.no)}</span><span>${money(m.volume)}</span><span>${money(m.liquidity)}</span><span class="${s.side.includes('YES')?'good':s.side.includes('NO')?'bad':'yellow'}">${s.side}</span><span>${s.entry?s.entry.toFixed(2):'--'}</span><span>${s.conf}%</span>`;
+    el.appendChild(row);
   });
 }
-
-window.addEventListener('load', () => {
-  resizeTradeFrame();
-  renderPolyChart();
-});
+function setPolySignal(sig){
+  currentPoly=sig;
+  const action=document.getElementById('polyAction');
+  action.textContent=sig.side; action.className='action '+(sig.side.includes('YES')?'good':sig.side.includes('NO')?'bad':'yellow');
+  document.getElementById('polyScore').textContent='Confidence '+sig.conf+'%';
+  document.getElementById('polyMarket').textContent=sig.title || sig.market || '--';
+  document.getElementById('polyEntry').textContent=sig.entry?sig.entry.toFixed(2):'--';
+  document.getElementById('polyTarget').textContent=sig.target?sig.target.toFixed(2):'--';
+  document.getElementById('polyStop').textContent=sig.stop?sig.stop.toFixed(2):'--';
+  document.getElementById('polyReasonOdds').textContent='YES '+pct(sig.yes)+' / NO '+pct(sig.no);
+  document.getElementById('polyReasonVol').textContent=money(sig.volume);
+  document.getElementById('polyReasonLiq').textContent=money(sig.liquidity);
+  document.getElementById('polyReasonToken').textContent=sig.token?String(sig.token).slice(0,10)+'...':'--';
+  const log=document.getElementById('polyLiveLog');
+  const row=document.createElement('div');row.className='row log-row';
+  row.innerHTML=`<span>${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</span><span class="${sig.side.includes('YES')?'good':sig.side.includes('NO')?'bad':'yellow'}">${sig.side}</span><span>${sig.title}</span><span>${sig.entry?sig.entry.toFixed(2):'--'}</span><span>${sig.target?sig.target.toFixed(2):'--'}</span><span>${sig.conf}%</span>`;
+  log.insertBefore(row,log.children[1]||null);
+}
+async function scanPoly(){
+  if(!polyMarkets.length) await fetchRealPolyMarkets();
+  if(!polyMarkets.length) return;
+  let best=polyMarkets.map(buildPolySignal).sort((a,b)=>b.conf-a.conf)[0];
+  setPolySignal(best);
+}
+function openPolyCall(){
+  if(!currentPoly || currentPoly.side==='WAIT') return;
+  const table=document.getElementById('activeCalls');
+  const row=document.createElement('div'); row.className='row call-row';
+  row.innerHTML=`<span>Now</span><span class="${currentPoly.side.includes('YES')?'good':'bad'}">${currentPoly.side}</span><span>${currentPoly.title}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.target.toFixed(2)}</span><span><span class="badge open">OPEN</span></span><span class="yellow">$0</span>`;
+  table.appendChild(row);
+}
+async function fetchPriceHistory(token,startTs,endTs,interval){
+  const url=`https://clob.polymarket.com/prices-history?market=${encodeURIComponent(token)}&startTs=${startTs}&endTs=${endTs}&interval=${interval}`;
+  const res=await fetch(url);
+  if(!res.ok) throw new Error('history HTTP '+res.status);
+  const j=await res.json();
+  return (j.history||[]).map(x=>({t:Number(x.t)*1000,p:Number(x.p)})).filter(x=>Number.isFinite(x.p));
+}
+async function runPolyBacktest(){
+  if(!polyMarkets.length) await fetchRealPolyMarkets();
+  if(!polyMarkets.length) return;
+  const bal0=Number(document.getElementById('polyBalance').value||1000);
+  const startTs=Math.floor(new Date(document.getElementById('polyFrom').value||'2025-01-01').getTime()/1000);
+  const endTs=Math.floor(new Date(document.getElementById('polyTo').value||new Date()).getTime()/1000);
+  const interval=document.getElementById('polyInterval').value||'1h';
+  const params=getPolyModeParams();
+  let balance=bal0, peak=bal0, maxDD=0, wins=0, losses=0, total=0, confSum=0;
+  let labels=['Start'], equity=[bal0], rows=[], byMonth={};
+  setStatus('mengambil price history real dari CLOB...');
+  const candidates=polyMarkets.map(buildPolySignal).filter(s=>s.side!=='WAIT'&&s.token).slice(0,5);
+  for(const sig of candidates){
+    try{
+      const hist=await fetchPriceHistory(sig.token,startTs,endTs,interval);
+      if(hist.length<5) continue;
+      let inPos=false, entry=0, target=0, stop=0, stake=0, openTime=null;
+      for(let i=1;i<hist.length;i++){
+        const prev=hist[i-1].p, price=hist[i].p;
+        if(!inPos){
+          const momentum=price>prev*1.01 || i===1;
+          if(momentum){
+            inPos=true; entry=price; target=Math.min(.96,entry+params.target); stop=Math.max(.04,entry-params.stop); stake=Math.max(5,balance*.025); openTime=hist[i].t; total++; confSum+=sig.conf;
+          }
+        }else{
+          let close=false, win=false;
+          if(price>=target){close=true;win=true;}
+          else if(price<=stop){close=true;win=false;}
+          else if(i===hist.length-1){close=true;win=price>=entry;}
+          if(close){
+            const pnl=win?stake*(price-entry)/Math.max(.05,entry):-stake*(entry-price)/Math.max(.05,entry);
+            balance+=pnl; if(win)wins++; else losses++;
+            peak=Math.max(peak,balance); maxDD=Math.max(maxDD,(peak-balance)/peak*100);
+            const dt=new Date(hist[i].t);
+            const mk=dt.toLocaleDateString('id-ID',{month:'short',year:'2-digit'});
+            byMonth[mk]=(byMonth[mk]||0)+pnl;
+            labels.push(dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})); equity.push(Number(balance.toFixed(2)));
+            rows.push({date:dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}),side:sig.side,market:sig.title,entry,exit:price,result:win?'WIN':'LOSS',pnl});
+            inPos=false;
+          }
+        }
+      }
+    }catch(e){ console.warn('history fail',sig.title,e); }
+  }
+  document.getElementById('polyBal').textContent=money(balance);
+  document.getElementById('polyProfit').textContent=(balance-bal0>=0?'+':'')+money(balance-bal0);
+  document.getElementById('polyProfit').className=balance>=bal0?'good':'bad';
+  document.getElementById('polyWR').textContent=total?(wins/total*100).toFixed(1)+'%':'--%';
+  document.getElementById('polyTotalCalls').textContent=total;
+  document.getElementById('polyClosedCalls').textContent=wins+losses;
+  document.getElementById('polyAvgConf').textContent=total?(confSum/total).toFixed(0)+'%':'--%';
+  document.getElementById('polyDD').textContent=maxDD.toFixed(1)+'%';
+  const months=Object.entries(byMonth).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('polyBestMonth').textContent=months[0]?.[0]||'--';
+  document.getElementById('polyWorstMonth').textContent=months[months.length-1]?.[0]||'--';
+  const histEl=document.getElementById('polyHistory');
+  histEl.innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
+  rows.slice(-80).reverse().forEach(r=>{
+    const row=document.createElement('div');row.className='row hist-row';
+    row.innerHTML=`<span>${r.date}</span><span class="${r.side.includes('YES')?'good':'bad'}">${r.side}</span><span>${r.market}</span><span>${r.entry.toFixed(2)}</span><span>${r.exit.toFixed(2)}</span><span><span class="badge ${r.result==='WIN'?'win':'loss'}">${r.result}</span></span><span class="${r.pnl>=0?'good':'bad'}">${r.pnl>=0?'+':''}${money(r.pnl)}</span>`;
+    histEl.appendChild(row);
+  });
+  polyEquityLabels=labels; polyEquityData=equity; renderPolyChart();
+  setStatus('backtest selesai memakai real CLOB price history. Calls: <b>'+total+'</b>');
+}
+function clearHistory(){
+  document.getElementById('polyHistory').innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
+}
+function renderPolyChart(){
+  const ctx=document.getElementById('polyChart'); if(!ctx||!window.Chart)return;
+  if(polyChart)polyChart.destroy();
+  polyChart=new Chart(ctx,{type:'line',data:{labels:polyEquityLabels,datasets:[{data:polyEquityData,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.14)',fill:true,tension:.35,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#94a3b8',maxTicksLimit:10},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}}}}});
+}
+window.addEventListener('load',()=>{resizeTradeFrame();renderPolyChart();});
 </script>
 </body>
 </html>
