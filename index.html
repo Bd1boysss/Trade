@@ -34,16 +34,30 @@ h1{font-size:21px}.sub{font-size:12px;color:var(--muted);margin-top:3px}.pill{fo
 <body>
 <div class="shell">
   <div class="header">
-    <div class="brand"><div class="logo">F</div><div><h1>Future Terminal</h1><div class="sub">Futures pakai real Binance API · Poly pakai real Polymarket API</div></div></div>
+    <div class="brand"><div class="logo">F</div><div><h1>Future Terminal</h1><div class="sub">Futures fitur lengkap + REAL TradingView Binance Futures chart · Poly real Polymarket API</div></div></div>
     <div class="pill">REAL API MODE</div>
   </div>
   <div class="tabs">
-    <div class="tab active" onclick="showTab('trade',this)"><b>Trade Future</b><span>Fitur futures lengkap real Binance</span></div>
+    <div class="tab active" onclick="showTab('trade',this)"><b>Trade Future</b><span>Fitur futures lengkap + real Binance chart</span></div>
     <div class="tab" onclick="showTab('poly',this)"><b>Poly</b><span>Real Polymarket markets + CLOB history</span></div>
   </div>
 
   <section id="trade" class="section active">
-    <div class="trade-frame-card"><iframe id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
+    
+<div class="card" style="margin-bottom:14px">
+  <div class="card-title">REAL TRADINGVIEW CHART — BINANCE FUTURES BTCUSDT.P</div>
+  <div style="height:680px;border:1px solid #26354d;border-radius:16px;overflow:hidden;background:#05080d">
+    <iframe
+      title="TradingView Binance Futures BTCUSDT Perpetual"
+      src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_btcusdtp&symbol=BINANCE%3ABTCUSDT.P&interval=15&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=0b0f14&studies=[]&theme=dark&style=1&timezone=Asia%2FJakarta&withdateranges=1&hideideas=1&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=en&utm_source=localhost&utm_medium=widget&utm_campaign=chart"
+      style="width:100%;height:100%;border:0"
+      allowtransparency="true"
+      scrolling="no">
+    </iframe>
+  </div>
+  <div class="note">Chart ini real dari TradingView dengan symbol <b>BINANCE:BTCUSDT.P</b>. Ini lebih stabil daripada fetch Binance API langsung di browser.</div>
+</div>
+<div class="trade-frame-card"><iframe id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;id&quot;&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;UTF-8&quot;&gt;
@@ -638,7 +652,7 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
     &lt;/div&gt;
     &lt;div class=&quot;live2-control&quot;&gt;
       &lt;label&gt;Timeframe&lt;/label&gt;
-      &lt;select id=&quot;live2Tf&quot;&gt;
+      &lt;select id=&quot;live2Tf&quot; onchange=&quot;refreshLive2PreviewOnTf()&quot;&gt;
         &lt;option value=&quot;15m&quot; selected&gt;15M&lt;/option&gt;
         &lt;option value=&quot;1h&quot;&gt;1H&lt;/option&gt;
         &lt;option value=&quot;4h&quot;&gt;4H&lt;/option&gt;
@@ -1729,15 +1743,55 @@ function stopLive2(){
   if(live2Ws){try{live2Ws.close(1000,&#x27;manual&#x27;)}catch(e){} live2Ws=null;}
   live2SetStatus(false,&#x27;STOPPED&#x27;); live2SetButtons(false); live2SetDebug(&#x27;berhenti&#x27;);
 }
-function loadLive2Preview(){
+async function loadLive2Preview(){
   try{
-    if(!initLive2Chart())return;
-    const now=Date.now(); live2Klines=genSim(160,0.25,now-160*15*60*1000,now); live2LoadChart();
+    if(!initLive2Chart()) return;
+    const tf = document.getElementById(&#x27;live2Tf&#x27;)?.value || &#x27;15m&#x27;;
+
+    const urls = [
+      `https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&amp;interval=${tf}&amp;limit=300`,
+      `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&amp;interval=${tf}&amp;limit=300`
+    ];
+
+    let d = null, lastErr = null;
+    for(const u of urls){
+      try{
+        const r = await fetch(u);
+        if(!r.ok) throw new Error(&#x27;HTTP &#x27;+r.status);
+        d = await r.json();
+        break;
+      }catch(e){ lastErr = e; }
+    }
+    if(!d) throw lastErr || new Error(&#x27;failed fetch&#x27;);
+
+    live2Klines = d.map(k=&gt;({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));
+    live2LoadChart();
+
+    const last = live2Klines[live2Klines.length-1];
+    if(last){
+      document.getElementById(&#x27;live2Price&#x27;).textContent = live2Fmt(last.c);
+      live2SetSignalUI(null,last.c);
+    }
+
     document.getElementById(&#x27;live2Placeholder&#x27;).style.display=&#x27;none&#x27;;
-    document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=&#x27;Preview candle loaded&lt;br&gt;Start Live Signal untuk live data&#x27;;
-  }catch(e){}
+    document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=&#x27;Real Binance candle loaded&lt;br&gt;Start Live Signal untuk websocket realtime&#x27;;
+    live2SetDebug(&#x27;preview real Binance Futures loaded&#x27;);
+  }catch(e){
+    // fallback only if Binance endpoint blocked
+    try{
+      if(!initLive2Chart()) return;
+      const now=Date.now();
+      live2Klines=/* disabled */ genSim(0,0,now-160*15*60*1000,now);
+      live2LoadChart();
+      document.getElementById(&#x27;live2Placeholder&#x27;).style.display=&#x27;none&#x27;;
+      document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=&#x27;Binance Futures API gagal&lt;br&gt;Binance API gagal diakses&#x27;;
+      live2SetDebug(&#x27;dummy fallback disabled karena Binance gagal: &#x27;+e.message);
+    }catch(_){}
+  }
 }
 
+
+function refreshLive2PreviewOnTf(){ if(!live2Running) loadLive2Preview(); }
 
 function updateLive2StrategyInfo(){
   const v=document.getElementById(&#x27;live2Strategy&#x27;).value;
@@ -2194,5 +2248,17 @@ function renderPolyChart(){
 }
 window.addEventListener('load',()=>{resizeTradeFrame();renderPolyChart();});
 </script>
+
+<script>
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    var info = document.getElementById('live2ChartInfo');
+    if(info && info.innerText && info.innerText.toLowerCase().includes('dummy')){
+      info.innerHTML = 'Binance Futures API gagal diakses<br>Tidak menampilkan data dummy';
+    }
+  }, 1000);
+});
+</script>
+
 </body>
 </html>
