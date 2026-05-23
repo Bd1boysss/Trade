@@ -3,61 +3,410 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Future Terminal — Binance + Polymarket Real API</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<title>Future Terminal Final — Trade + Poly + SOL Degen</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+
+/* XAUUSD-only Forex Signal + Backtest */
+let xauRows=[], xauLastSignal=null, xauChart=null;
+
+function xauSetStatus(t){
+  const el=document.getElementById('xauStatus'); if(el) el.innerHTML='Status: '+t;
+  const box=document.getElementById('xauStatusBox'); if(box) box.value=String(t).replace(/<[^>]*>/g,'').slice(0,18);
+}
+function xauFmt(v){return Number(v).toFixed(2)}
+function xauMoney(v){return '$'+Number(v||0).toLocaleString('en-US',{maximumFractionDigits:0})}
+function emaArr(values,len){let k=2/(len+1),out=[],prev=values[0];for(const v of values){prev=v*k+prev*(1-k);out.push(prev)}return out}
+function rsiArr(values,len=14,idx=null){
+  const end=idx==null?values.length-1:idx;
+  if(end<len+1)return 50;
+  let gains=0,losses=0;
+  for(let i=end-len+1;i<=end;i++){let d=values[i]-values[i-1];if(d>=0)gains+=d;else losses-=d}
+  const rs=gains/(losses||1e-9);
+  return 100-(100/(1+rs));
+}
+function parseStooqCSV(csv){
+  const lines=csv.trim().split(/\r?\n/);
+  const out=[];
+  for(let i=1;i<lines.length;i++){
+    const [Date,Open,High,Low,Close,Volume]=lines[i].split(',');
+    const o=+Open,h=+High,l=+Low,c=+Close;
+    if(Date && Number.isFinite(c)) out.push({date:Date,o,h,l,c});
+  }
+  return out;
+}
+async function loadXAUData(){
+  xauSetStatus('fetching XAUUSD Stooq CSV...');
+  try{
+    const url='https://stooq.com/q/d/l/?s=xauusd&i=d';
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const csv=await res.text();
+    let rows=parseStooqCSV(csv);
+    const from=document.getElementById('xauFrom').value;
+    const to=document.getElementById('xauTo').value;
+    if(from) rows=rows.filter(r=>r.date>=from);
+    if(to) rows=rows.filter(r=>r.date<=to);
+    xauRows=rows;
+    if(!rows.length) throw new Error('data kosong');
+    const last=rows[rows.length-1];
+    document.getElementById('xauLast').textContent=xauFmt(last.c);
+    xauSetStatus('<b>'+rows.length+'</b> daily candles loaded dari Stooq.');
+    generateXAUSignal();
+  }catch(e){
+    xauSetStatus('<span style="color:#f87171">Fetch XAUUSD gagal: '+e.message+'</span>');
+  }
+}
+function buildXAUSignal(idx=null){
+  if(!xauRows.length)return null;
+  const i=idx==null?xauRows.length-1:idx;
+  if(i<55)return null;
+  const closes=xauRows.map(r=>r.c);
+  const e20=emaArr(closes.slice(0,i+1),20).at(-1);
+  const e50=emaArr(closes.slice(0,i+1),50).at(-1);
+  const rsi=rsiArr(closes,14,i);
+  const price=xauRows[i].c;
+  const mom=(price-closes[Math.max(0,i-5)])/closes[Math.max(0,i-5)]*100;
+  const mode=document.getElementById('xauMode')?.value||'balanced';
+  const strategy=document.getElementById('xauStrategy')?.value||'trend';
+  let side='WAIT';
+
+  if(strategy==='trend'){
+    if(e20>e50 && rsi>50 && mom>0) side='BUY';
+    if(e20<e50 && rsi<50 && mom<0) side='SELL';
+  }else if(strategy==='pullback'){
+    if(e20>e50 && rsi<45) side='BUY';
+    if(e20<e50 && rsi>55) side='SELL';
+  }else{
+    const prevHigh=Math.max(...xauRows.slice(Math.max(0,i-20),i).map(r=>r.h));
+    const prevLow=Math.min(...xauRows.slice(Math.max(0,i-20),i).map(r=>r.l));
+    if(price>prevHigh) side='BUY';
+    if(price<prevLow) side='SELL';
+  }
+
+  if(mode==='strict' && Math.abs(mom)<0.25) side='WAIT';
+  if(mode==='active' && side==='WAIT'){
+    if(e20>e50) side='BUY';
+    if(e20<e50) side='SELL';
+  }
+
+  const tpPts=Number(document.getElementById('xauTPPoints')?.value||45);
+  const slPts=Number(document.getElementById('xauSLPoints')?.value||25);
+  const tp=side==='SELL'?price-tpPts:price+tpPts;
+  const sl=side==='SELL'?price+slPts:price-slPts;
+  const score=Math.min(95,Math.max(45,Math.round(55+Math.abs(mom)*12+Math.abs(e20-e50)/price*1000+(side==='WAIT'?-18:0))));
+  return {date:xauRows[i].date,side,entry:price,tp,sl,score,rsi,mom,e20,e50};
+}
+function generateXAUSignal(){
+  if(!xauRows.length){loadXAUData();return}
+  const s=buildXAUSignal();
+  if(!s)return;
+  xauLastSignal=s;
+  const action=document.getElementById('xauAction');
+  action.textContent=s.side+' XAUUSD';
+  action.className='action '+(s.side==='BUY'?'good':s.side==='SELL'?'bad':'yellow');
+  document.getElementById('xauSignal').textContent=s.side;
+  document.getElementById('xauSignal').className=s.side==='BUY'?'good':s.side==='SELL'?'bad':'yellow';
+  document.getElementById('xauScore').textContent='Score '+s.score+'/100';
+  document.getElementById('xauEntry').textContent=xauFmt(s.entry);
+  document.getElementById('xauTpLevel').textContent=s.side==='WAIT'?'--':xauFmt(s.tp);
+  document.getElementById('xauSlLevel').textContent=s.side==='WAIT'?'--':xauFmt(s.sl);
+  document.getElementById('xauTP').textContent=s.side==='WAIT'?'--':xauFmt(s.tp);
+  document.getElementById('xauSL').textContent=s.side==='WAIT'?'--':xauFmt(s.sl);
+  document.getElementById('xauRiskBox').textContent=document.getElementById('xauRisk').value+'% risk';
+  document.getElementById('xauTrend').textContent=s.e20>s.e50?'EMA20 > EMA50':'EMA20 < EMA50';
+  document.getElementById('xauRsi').textContent=s.rsi.toFixed(1);
+  document.getElementById('xauMomentum').textContent=(s.mom>=0?'+':'')+s.mom.toFixed(2)+'%';
+  document.getElementById('xauBias').textContent=s.side==='WAIT'?'No clear edge':s.side+' bias';
+  xauSetStatus('XAUUSD signal updated.');
+}
+function runXAUBacktest(){
+  if(!xauRows.length){loadXAUData();return}
+  const bal0=Number(document.getElementById('xauBalance').value||1000);
+  const riskPct=Number(document.getElementById('xauRisk').value||1)/100;
+  let bal=bal0, peak=bal0, dd=0, trades=0, wins=0, losses=0, labels=['Start'], eq=[bal0];
+  const hist=document.getElementById('xauHistory');
+  hist.innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Pair</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
+
+  for(let i=60;i<xauRows.length-3;i++){
+    const s=buildXAUSignal(i);
+    if(!s || s.side==='WAIT') continue;
+    const riskAmount=Math.max(5,bal*riskPct);
+    const slDistance=Math.abs(s.entry-s.sl) || 25;
+    let closed=false;
+    for(let j=i+1;j<Math.min(xauRows.length,i+8);j++){
+      const bar=xauRows[j];
+      let result=null, exit=null;
+      if(s.side==='BUY'){
+        if(bar.h>=s.tp){result='WIN';exit=s.tp}
+        else if(bar.l<=s.sl){result='LOSS';exit=s.sl}
+      }else{
+        if(bar.l<=s.tp){result='WIN';exit=s.tp}
+        else if(bar.h>=s.sl){result='LOSS';exit=s.sl}
+      }
+      if(result){
+        const rr=result==='WIN'?Math.abs(s.tp-s.entry)/slDistance:-1;
+        const pnl=riskAmount*rr;
+        bal+=pnl; trades++; if(result==='WIN')wins++; else losses++;
+        peak=Math.max(peak,bal); dd=Math.max(dd,(peak-bal)/peak*100);
+        labels.push(bar.date); eq.push(Number(bal.toFixed(2)));
+        const row=document.createElement('div'); row.className='row hist-row';
+        row.innerHTML=`<span>${bar.date}</span><span class="${s.side==='BUY'?'good':'bad'}">${s.side}</span><span>XAUUSD</span><span>${xauFmt(s.entry)}</span><span>${xauFmt(exit)}</span><span><span class="badge ${result==='WIN'?'win':'loss'}">${result}</span></span><span class="${pnl>=0?'good':'bad'}">${pnl>=0?'+':''}${xauMoney(pnl)}</span>`;
+        hist.appendChild(row);
+        closed=true;
+        break;
+      }
+    }
+    if(closed) i+=2;
+  }
+  const profit=bal-bal0;
+  document.getElementById('xauBtBalance').textContent=xauMoney(bal);
+  document.getElementById('xauBtProfit').textContent=(profit>=0?'+':'')+xauMoney(profit);
+  document.getElementById('xauBtProfit').className=profit>=0?'good':'bad';
+  document.getElementById('xauBtTrades').textContent=trades;
+  document.getElementById('xauBtWR').textContent=trades?(wins/trades*100).toFixed(1)+'%':'--%';
+  document.getElementById('xauBtDD').textContent=dd.toFixed(1)+'%';
+  renderXAUChart(labels,eq);
+  xauSetStatus('XAUUSD backtest selesai. Trades: '+trades);
+}
+function renderXAUChart(labels,eq){
+  const ctx=document.getElementById('xauEquityChart'); if(!ctx||!window.Chart)return;
+  if(xauChart)xauChart.destroy();
+  xauChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{data:eq,borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,.14)',fill:true,tension:.35,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#94a3b8',maxTicksLimit:8},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}}}}});
+}
+function openXAUPaper(){
+  if(!xauLastSignal){generateXAUSignal();return}
+  const s=xauLastSignal;
+  if(s.side==='WAIT')return;
+  const row=document.createElement('div');row.className='row hist-row';
+  row.innerHTML=`<span>Now</span><span class="${s.side==='BUY'?'good':'bad'}">${s.side}</span><span>XAUUSD</span><span>${xauFmt(s.entry)}</span><span>${xauFmt(s.tp)}</span><span>${xauFmt(s.sl)}</span><span><span class="badge open">OPEN</span></span>`;
+  document.getElementById('xauActive').appendChild(row);
+}
+function clearXAUHistory(){
+  document.getElementById('xauHistory').innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Pair</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
+}
+
+
+/* EA Boys V8 Plus logic translated to terminal signal */
+let eaCandles=[], eaLastSignal=null;
+
+function eaSetStatus(t){
+  const el=document.getElementById('eaStatus'); if(el) el.innerHTML='Status: '+t;
+  const box=document.getElementById('eaStatusBox'); if(box) box.value=String(t).replace(/<[^>]*>/g,'').slice(0,18);
+}
+function eaN(id){return Number(document.getElementById(id)?.value||0)}
+function eaB(id){return (document.getElementById(id)?.value||'true')==='true'}
+function eaFmt(v){return Number(v).toFixed(2)}
+function eaPoint(){return eaN('eaPoint')||0.01}
+function eaNowHour(){return new Date().getHours()}
+
+function eaEMA(values,len){
+  const k=2/(len+1); let prev=values[0], out=[];
+  for(const v of values){prev=v*k+prev*(1-k);out.push(prev)}
+  return out;
+}
+function eaATR(candles,period=14){
+  const trs=[];
+  for(let i=1;i<candles.length;i++){
+    const h=candles[i].high,l=candles[i].low,pc=candles[i-1].close;
+    trs.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)));
+  }
+  const out=[]; let prev=trs[0]||0;
+  for(const tr of trs){prev=(prev*(period-1)+tr)/period;out.push(prev)}
+  return out;
+}
+function eaSessionOK(){
+  if(!eaB('eaUseSession')) return true;
+  const h=eaNowHour(), start=eaN('eaStartHour'), end=eaN('eaEndHour');
+  if(start<=end) return h>=start && h<end;
+  return h>=start || h<end;
+}
+function eaSpreadOK(){return eaN('eaSpread') <= eaN('eaMaxSpread')}
+function eaHighestHigh(startShift,count){
+  const arr=eaCandles.slice(-1-startShift-count+1,-1-startShift+1);
+  return Math.max(...arr.map(c=>c.high));
+}
+function eaLowestLow(startShift,count){
+  const arr=eaCandles.slice(-1-startShift-count+1,-1-startShift+1);
+  return Math.min(...arr.map(c=>c.low));
+}
+function eaTrendDirection(){
+  const closes=eaCandles.map(c=>c.close);
+  const fast=eaEMA(closes,eaN('eaEmaFast')).at(-2);
+  const slow=eaEMA(closes,eaN('eaEmaSlow')).at(-2);
+  if(!Number.isFinite(fast)||!Number.isFinite(slow)) return 0;
+  return fast>slow?1:-1;
+}
+function eaATRFilterOK(){
+  const atrs=eaATR(eaCandles,eaN('eaATRPeriod'));
+  const maPeriod=eaN('eaATRMA');
+  const sample=atrs.slice(-maPeriod);
+  const current=sample.at(-1);
+  const avg=sample.reduce((a,b)=>a+b,0)/(sample.length||1);
+  const ok=current >= avg*eaN('eaATRMult');
+  return {ok,current,avg,min:avg*eaN('eaATRMult')};
+}
+
+async function fetchEAFromBridge(){
+  const base=document.getElementById('eaBridgeUrl').value.replace(/\?$/,'');
+  const symbol=document.getElementById('eaSymbol').value;
+  const tf=document.getElementById('eaTf').value;
+  const count=document.getElementById('eaCount').value;
+  const url=`${base}?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(tf)}&count=${encodeURIComponent(count)}`;
+  eaSetStatus('fetching MT5 bridge...');
+  try{
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    eaCandles=data.map(x=>({
+      time:x.time||x.Time||x.t,
+      open:Number(x.open ?? x.Open ?? x.o),
+      high:Number(x.high ?? x.High ?? x.h),
+      low:Number(x.low ?? x.Low ?? x.l),
+      close:Number(x.close ?? x.Close ?? x.c),
+      volume:Number(x.tick_volume ?? x.volume ?? x.v ?? 0)
+    })).filter(c=>Number.isFinite(c.close));
+    eaSetStatus('<b>'+eaCandles.length+'</b> candles loaded dari MT5 bridge.');
+    generateBoysSignal();
+  }catch(e){
+    eaSetStatus('<span style="color:#f87171">Bridge gagal: '+e.message+'. Jalankan Python MT5 bridge dulu.</span>');
+  }
+}
+function loadBoysDemoCandles(){
+  const out=[]; let p=2350;
+  for(let i=0;i<320;i++){
+    const drift=Math.sin(i/18)*2 + (i>160?0.25:-0.05);
+    const o=p, c=o+drift+(Math.random()-.45)*5;
+    const h=Math.max(o,c)+Math.random()*4;
+    const l=Math.min(o,c)-Math.random()*4;
+    out.push({time:String(i),open:o,high:h,low:l,close:c,volume:100+i});
+    p=c;
+  }
+  eaCandles=out;
+  eaSetStatus('demo candles loaded. Untuk real, pakai MT5 bridge.');
+  generateBoysSignal();
+}
+function addLogicRow(step,logic,input,status,result,score){
+  const rows=document.getElementById('eaLogicRows');
+  const row=document.createElement('div'); row.className='row hist-row';
+  row.innerHTML=`<span>${step}</span><span>${logic}</span><span>${input}</span><span class="${status?'good':'bad'}">${status?'PASS':'SKIP'}</span><span>${result}</span><span>${status?'OK':'Blocked'}</span><span>${score}</span>`;
+  rows.appendChild(row);
+}
+function generateBoysSignal(){
+  document.getElementById('eaLogicRows').innerHTML='';
+  if(eaCandles.length < Math.max(220,eaN('eaCount')/2)){
+    eaSetStatus('candles belum cukup. Fetch bridge atau load demo candles dulu.');
+    return;
+  }
+  const pt=eaPoint();
+  const session=eaSessionOK();
+  const spread=eaSpreadOK();
+  const daily=eaB('eaDailyOK');
+  const atr=eaATRFilterOK();
+  const lookback=Math.max(3,eaN('eaLookback'));
+  const hh=eaHighestHigh(1,lookback);
+  const ll=eaLowestLow(1,lookback);
+  const rangePts=(hh-ll)/pt;
+  const rangeOK=rangePts >= eaN('eaMinRange');
+  const trend=eaTrendDirection();
+  const buyPrice=hh+eaN('eaBuffer')*pt;
+  const sellPrice=ll-eaN('eaBuffer')*pt;
+  const buySL=buyPrice-eaN('eaSLPts')*pt;
+  const buyTP=buyPrice+eaN('eaTPPts')*pt;
+  const sellSL=sellPrice+eaN('eaSLPts')*pt;
+  const sellTP=sellPrice-eaN('eaTPPts')*pt;
+  const doBuy=trend>=0;
+  const doSell=trend<=0;
+  let score=0;
+  if(session)score+=15;if(spread)score+=15;if(daily)score+=10;if(atr.ok)score+=20;if(rangeOK)score+=20;if(trend!==0)score+=20;
+  const allOK=session&&spread&&daily&&atr.ok&&rangeOK;
+  let signal='WAIT', action='WAIT';
+  if(allOK && doBuy && doSell){signal='OCO'; action='BUY STOP + SELL STOP'}
+  else if(allOK && doBuy){signal='BUY STOP'; action='BUY STOP'}
+  else if(allOK && doSell){signal='SELL STOP'; action='SELL STOP'}
+
+  addLogicRow('1','Session filter',`${eaN('eaStartHour')}-${eaN('eaEndHour')}`,session,session?'Session aktif':'Di luar jam',session?15:0);
+  addLogicRow('2','Spread filter',`${eaN('eaSpread')} <= ${eaN('eaMaxSpread')} pts`,spread,spread?'Spread aman':'Spread terlalu besar',spread?15:0);
+  addLogicRow('3','Daily loss limit','DailyLossOK()',daily,daily?'Trading allowed':'Daily loss hit',daily?10:0);
+  addLogicRow('4','ATR filter',`${(atr.current/pt).toFixed(0)} >= ${(atr.min/pt).toFixed(0)} pts`,atr.ok,atr.ok?'Volatility cukup':'Choppy/ATR kecil',atr.ok?20:0);
+  addLogicRow('5','Range filter',`${rangePts.toFixed(0)} >= ${eaN('eaMinRange')} pts`,rangeOK,rangeOK?'HH-LL valid':'Range sempit',rangeOK?20:0);
+  addLogicRow('6','EMA trend',trend>0?'Fast > Slow':trend<0?'Fast < Slow':'Neutral',trend!==0,trend>0?'Only BuyStop':trend<0?'Only SellStop':'OCO full',trend!==0?20:0);
+
+  document.getElementById('eaSignalBox').textContent=signal;
+  document.getElementById('eaSignalBox').className=signal.includes('BUY')?'good':signal.includes('SELL')?'bad':signal==='OCO'?'blue':'yellow';
+  document.getElementById('eaAction').textContent=action;
+  document.getElementById('eaAction').className='action '+(signal.includes('BUY')?'good':signal.includes('SELL')?'bad':signal==='OCO'?'blue':'yellow');
+  document.getElementById('eaScore').textContent='Score '+score+'/100';
+  document.getElementById('eaScoreBox').textContent=score+'/100';
+  document.getElementById('eaTrendBox').textContent=trend>0?'UPTREND':trend<0?'DOWNTREND':'NEUTRAL';
+  document.getElementById('eaATRBox').textContent=atr.ok?'PASS':'SKIP';
+  document.getElementById('eaRangeBox').textContent=rangeOK?'PASS':'SKIP';
+  document.getElementById('eaBuyStop').textContent=doBuy&&allOK?eaFmt(buyPrice):'--';
+  document.getElementById('eaSellStop').textContent=doSell&&allOK?eaFmt(sellPrice):'--';
+  document.getElementById('eaTPSL').textContent=signal.includes('BUY')?`TP ${eaFmt(buyTP)} / SL ${eaFmt(buySL)}`:signal.includes('SELL')?`TP ${eaFmt(sellTP)} / SL ${eaFmt(sellSL)}`:signal==='OCO'?`BUY TP ${eaFmt(buyTP)} / SELL TP ${eaFmt(sellTP)}`:'--';
+  document.getElementById('eaExpireBox').textContent=eaN('eaExpire')+' bars';
+  document.getElementById('eaSessionReason').textContent=session?'PASS':'BLOCK';
+  document.getElementById('eaSpreadReason').textContent=spread?'PASS':'BLOCK';
+  document.getElementById('eaHHLLReason').textContent=`HH ${eaFmt(hh)} / LL ${eaFmt(ll)}`;
+  document.getElementById('eaDecisionReason').textContent=signal==='WAIT'?'No order placed':signal+' valid';
+
+  eaLastSignal={signal,action,symbol:document.getElementById('eaSymbol').value,buyPrice,sellPrice,buyTP,buySL,sellTP,sellSL,score,reason:document.getElementById('eaDecisionReason').textContent};
+  const hist=document.getElementById('eaHistory');
+  const row=document.createElement('div'); row.className='row hist-row';
+  const entry=signal.includes('BUY')?buyPrice:signal.includes('SELL')?sellPrice:0;
+  const tp=signal.includes('BUY')?buyTP:signal.includes('SELL')?sellTP:0;
+  const sl=signal.includes('BUY')?buySL:signal.includes('SELL')?sellSL:0;
+  row.innerHTML=`<span>${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</span><span class="${signal.includes('BUY')?'good':signal.includes('SELL')?'bad':'yellow'}">${signal}</span><span>${eaLastSignal.symbol}</span><span>${entry?eaFmt(entry):'--'}</span><span>${tp?eaFmt(tp):'--'}</span><span>${sl?eaFmt(sl):'--'}</span><span>${eaLastSignal.reason}</span>`;
+  hist.insertBefore(row,hist.children[1]||null);
+  eaSetStatus('signal generated from Boys_V8_Plus logic.');
+}
+async function copyEASignal(){
+  if(!eaLastSignal){generateBoysSignal();return}
+  const s=eaLastSignal;
+  const txt=`${s.signal} ${s.symbol}\nBuyStop: ${eaFmt(s.buyPrice)}\nSellStop: ${eaFmt(s.sellPrice)}\nScore: ${s.score}/100\nReason: ${s.reason}`;
+  try{await navigator.clipboard.writeText(txt);eaSetStatus('EA signal copied.')}catch(e){eaSetStatus(txt)}
+}
+function clearEAHistory(){
+  document.getElementById('eaHistory').innerHTML='<div class="row hist-row head"><span>Time</span><span>Signal</span><span>Symbol</span><span>Entry</span><span>TP</span><span>SL</span><span>Reason</span></div>';
+}
+
+</script>
 <style>
-:root{--bg:#080d14;--card:#111827;--card2:#0f172a;--border:#26354d;--border2:#334155;--text:#f8fafc;--muted:#94a3b8;--muted2:#64748b;--green:#4ade80;--red:#f87171;--blue:#2563eb;--yellow:#fbbf24}
+:root{--bg:#070b12;--card:#0f172a;--card2:#111827;--line:#26354d;--text:#f8fafc;--muted:#94a3b8;--green:#4ade80;--red:#f87171;--yellow:#fbbf24;--blue:#60a5fa}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
-.shell{max-width:1180px;margin:auto;padding:18px 14px 60px}
-.header{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #1f2937}
-.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:1000;font-size:20px}
-h1{font-size:21px}.sub{font-size:12px;color:var(--muted);margin-top:3px}.pill{font-size:11px;font-weight:900;color:var(--green);border:1px solid #16a34a66;background:#16a34a14;border-radius:999px;padding:7px 11px;white-space:nowrap}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.tab{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:14px 16px;cursor:pointer;color:#cbd5e1;transition:.15s}.tab.active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#3b82f6;color:white}.tab b{display:block;font-size:16px;margin-bottom:4px}.tab span{font-size:11px;opacity:.78}
-.section{display:none}.section.active{display:block}
-.trade-frame-card{background:#0f0f0f;border:1px solid var(--border);border-radius:16px;overflow:hidden}#tradeFrame{width:100%;border:0;display:block;background:#0f0f0f;min-height:1800px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:900;margin-bottom:12px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.metric{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px}.metric small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:6px}.metric b{font-size:19px;font-weight:1000}.metric span{display:block;color:var(--muted2);font-size:10px;margin-top:4px}
-.good{color:var(--green)!important}.bad{color:var(--red)!important}.yellow{color:var(--yellow)!important}.blue{color:#60a5fa!important}
-.controls{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px}label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px}input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:white}button{cursor:pointer;font-weight:850;background:#2563eb;border-color:#2563eb}.btns{display:flex;gap:8px;flex-wrap:wrap}.btns button{width:auto}.danger{background:#7f1d1d;border-color:#991b1b}.green{background:#166534;border-color:#15803d}.neutralBtn{background:#0f172a;border-color:#334155}
-.signal{background:linear-gradient(180deg,#0f172a,#0b1120);border:1px solid #334155;border-radius:14px;padding:15px}.signal-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.action{font-size:30px;font-weight:1000}.score{background:#111827;border:1px solid #334155;border-radius:10px;padding:8px 12px;font-weight:900;color:#cbd5e1}.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.level{background:#111827;border:1px solid #334155;border-radius:10px;padding:10px}.level small{color:var(--muted);font-size:9px;text-transform:uppercase}.level b{display:block;margin-top:5px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shell{max-width:1280px;margin:auto;padding:18px 14px 60px}
+.header{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1f2937}
+.brand{display:flex;gap:12px;align-items:center}.logo{width:46px;height:46px;border-radius:15px;background:linear-gradient(135deg,#2563eb,#14f195);display:flex;align-items:center;justify-content:center;font-weight:1000;font-size:20px}
+h1{font-size:22px}.sub{font-size:12px;color:var(--muted);margin-top:4px}.pill{font-size:11px;font-weight:900;color:var(--green);border:1px solid #16a34a66;background:#16a34a14;border-radius:999px;padding:8px 12px;white-space:nowrap}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}.tab{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;color:#cbd5e1;transition:.15s}.tab.active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#3b82f6;color:white}.tab b{display:block;font-size:16px;margin-bottom:4px}.tab span{font-size:11px;opacity:.78}
+.section{display:none}.section.active{display:block}.frame-card{background:#05080d;border:1px solid var(--line);border-radius:16px;overflow:hidden}.app-frame{width:100%;border:0;display:block;background:#05080d;min-height:2200px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:900;margin-bottom:12px}
+.controls{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px}label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px}input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0b1120;color:white}button{cursor:pointer;background:#2563eb;border-color:#2563eb;font-weight:900}.btns{display:flex;gap:8px;flex-wrap:wrap}.btns button{width:auto}.greenBtn{background:#166534;border-color:#15803d}.redBtn{background:#7f1d1d;border-color:#991b1b}.darkBtn{background:#0b1120;border-color:#334155}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.metric{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px}.metric small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:6px}.metric b{font-size:19px;font-weight:1000}.metric span{display:block;color:#64748b;font-size:10px;margin-top:4px}
+.good{color:var(--green)!important}.bad{color:var(--red)!important}.yellow{color:var(--yellow)!important}.blue{color:var(--blue)!important}
+.signal{background:linear-gradient(180deg,#111827,#0b1120);border:1px solid #334155;border-radius:14px;padding:15px}.signal-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.action{font-size:30px;font-weight:1000}.score{background:#111827;border:1px solid #334155;border-radius:10px;padding:8px 12px;font-weight:900;color:#cbd5e1}.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.level{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px}.level small{color:var(--muted);font-size:9px;text-transform:uppercase}.level b{display:block;margin-top:5px;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .reason-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.reason-box{background:#111827;border:1px solid #334155;border-radius:10px;padding:10px}.reason-box small{display:block;color:#94a3b8;font-size:9px;text-transform:uppercase;margin-bottom:5px}.reason-box b{font-size:13px}
-.table{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#0b1120}.row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #1f2a3d;font-size:11px;align-items:center}.row:last-child{border-bottom:none}.head{background:#0f172a;color:var(--muted);font-weight:900;text-transform:uppercase;font-size:10px}
+.table{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0b1120}.row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #1f2a3d;font-size:11px;align-items:center}.row:last-child{border-bottom:none}.head{background:#111827;color:var(--muted);font-weight:900;text-transform:uppercase;font-size:10px}
 .market-row{grid-template-columns:1.4fr 60px 60px 78px 78px 86px 82px 68px}.call-row{grid-template-columns:70px 90px 1.2fr 75px 75px 75px 70px 80px}.hist-row{grid-template-columns:80px 90px 1.2fr 75px 75px 75px 80px}.log-row{grid-template-columns:70px 90px 1fr 80px 80px 80px}
 .badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.open{background:#2563eb22;color:#93c5fd;border:1px solid #2563eb66}.win{background:#16a34a22;color:#4ade80;border:1px solid #16a34a66}.loss{background:#dc262622;color:#f87171;border:1px solid #dc262666}.wait{background:#d9770622;color:#fbbf24;border:1px solid #d9770666}
-.note{font-size:10px;color:var(--muted2);line-height:1.6;margin-top:10px}.chartbox{height:310px;background:#0b0f14;border:1px solid var(--border);border-radius:12px;padding:10px}.statusline{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}.statusline b{color:white}
-@media(max-width:900px){.grid2,.grid4,.grid5,.grid6,.controls,.levels,.reason-grid{grid-template-columns:1fr 1fr}.market-row,.call-row,.hist-row,.log-row{grid-template-columns:70px 1fr 70px 70px}.market-row span:nth-child(n+5),.call-row span:nth-child(n+5),.hist-row span:nth-child(n+5),.log-row span:nth-child(n+5){display:none}}
-@media(max-width:560px){.tabs,.grid2,.grid4,.grid5,.grid6,.controls,.levels,.reason-grid{grid-template-columns:1fr}.header{align-items:flex-start;flex-direction:column}}
+.statusline,.note{font-size:10px;color:#64748b;line-height:1.6;margin-top:10px}.chartbox{height:310px;background:#05080d;border:1px solid var(--line);border-radius:12px;padding:10px}
+@media(max-width:900px){.tabs,.grid2,.grid5,.controls,.levels,.reason-grid{grid-template-columns:1fr 1fr}.market-row,.call-row,.hist-row,.log-row{grid-template-columns:70px 1fr 70px 70px}.market-row span:nth-child(n+5),.call-row span:nth-child(n+5),.hist-row span:nth-child(n+5),.log-row span:nth-child(n+5){display:none}}
+@media(max-width:560px){.tabs,.grid2,.grid5,.controls,.levels,.reason-grid{grid-template-columns:1fr}.header{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
 <div class="shell">
-  <div class="header">
-    <div class="brand"><div class="logo">F</div><div><h1>Future Terminal</h1><div class="sub">Futures fitur lengkap + REAL TradingView Binance Futures chart · Poly real Polymarket API</div></div></div>
-    <div class="pill">REAL API MODE</div>
-  </div>
+  <div class="header"><div class="brand"><div class="logo">F</div><div><h1>Future Terminal Final</h1><div class="sub">Trade Future + Poly + SOL Degen dalam satu file</div></div></div><div class="pill">FINAL DASHBOARD</div></div>
+
   <div class="tabs">
-    <div class="tab active" onclick="showTab('trade',this)"><b>Trade Future</b><span>Fitur futures lengkap + real Binance chart</span></div>
-    <div class="tab" onclick="showTab('poly',this)"><b>Poly</b><span>Real Polymarket markets + CLOB history</span></div>
+    <div class="tab active" onclick="showMainTab('trade',this)"><b>Trade Future</b><span>Fitur futures lengkap yang sudah dibangun</span></div>
+    <div class="tab" onclick="showMainTab('poly',this)"><b>Poly</b><span>Real Polymarket API + AI calls</span></div>
+    <div class="tab" onclick="showMainTab('sol',this)"><b>SOL Degen</b><span>DexScreener + AI token research</span></div>
+    <div class="tab" onclick="showMainTab('forex',this)"><b>XAUUSD</b><span>Gold signal + backtest</span></div>
+    <div class="tab" onclick="showMainTab('eaBoys',this)"><b>EA Boys V8</b><span>Logic MQ5 jadi AI signal</span></div>
   </div>
 
-  <section id="trade" class="section active">
-    
-<div class="card" style="margin-bottom:14px">
-  <div class="card-title">REAL TRADINGVIEW CHART — BINANCE FUTURES BTCUSDT.P</div>
-  <div style="height:680px;border:1px solid #26354d;border-radius:16px;overflow:hidden;background:#05080d">
-    <iframe
-      title="TradingView Binance Futures BTCUSDT Perpetual"
-      src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_btcusdtp&symbol=BINANCE%3ABTCUSDT.P&interval=15&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=0b0f14&studies=[]&theme=dark&style=1&timezone=Asia%2FJakarta&withdateranges=1&hideideas=1&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=en&utm_source=localhost&utm_medium=widget&utm_campaign=chart"
-      style="width:100%;height:100%;border:0"
-      allowtransparency="true"
-      scrolling="no">
-    </iframe>
-  </div>
-  <div class="note">Chart ini real dari TradingView dengan symbol <b>BINANCE:BTCUSDT.P</b>. Ini lebih stabil daripada fetch Binance API langsung di browser.</div>
-</div>
-<div class="trade-frame-card"><iframe id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
+  <section id="trade" class="section active"><div class="frame-card"><iframe class="app-frame" id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;id&quot;&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;UTF-8&quot;&gt;
@@ -652,7 +1001,7 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
     &lt;/div&gt;
     &lt;div class=&quot;live2-control&quot;&gt;
       &lt;label&gt;Timeframe&lt;/label&gt;
-      &lt;select id=&quot;live2Tf&quot; onchange=&quot;refreshLive2PreviewOnTf()&quot;&gt;
+      &lt;select id=&quot;live2Tf&quot;&gt;
         &lt;option value=&quot;15m&quot; selected&gt;15M&lt;/option&gt;
         &lt;option value=&quot;1h&quot;&gt;1H&lt;/option&gt;
         &lt;option value=&quot;4h&quot;&gt;4H&lt;/option&gt;
@@ -1743,55 +2092,15 @@ function stopLive2(){
   if(live2Ws){try{live2Ws.close(1000,&#x27;manual&#x27;)}catch(e){} live2Ws=null;}
   live2SetStatus(false,&#x27;STOPPED&#x27;); live2SetButtons(false); live2SetDebug(&#x27;berhenti&#x27;);
 }
-async function loadLive2Preview(){
+function loadLive2Preview(){
   try{
-    if(!initLive2Chart()) return;
-    const tf = document.getElementById(&#x27;live2Tf&#x27;)?.value || &#x27;15m&#x27;;
-
-    const urls = [
-      `https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&amp;interval=${tf}&amp;limit=300`,
-      `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&amp;interval=${tf}&amp;limit=300`
-    ];
-
-    let d = null, lastErr = null;
-    for(const u of urls){
-      try{
-        const r = await fetch(u);
-        if(!r.ok) throw new Error(&#x27;HTTP &#x27;+r.status);
-        d = await r.json();
-        break;
-      }catch(e){ lastErr = e; }
-    }
-    if(!d) throw lastErr || new Error(&#x27;failed fetch&#x27;);
-
-    live2Klines = d.map(k=&gt;({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));
-    live2LoadChart();
-
-    const last = live2Klines[live2Klines.length-1];
-    if(last){
-      document.getElementById(&#x27;live2Price&#x27;).textContent = live2Fmt(last.c);
-      live2SetSignalUI(null,last.c);
-    }
-
+    if(!initLive2Chart())return;
+    const now=Date.now(); live2Klines=genSim(160,0.25,now-160*15*60*1000,now); live2LoadChart();
     document.getElementById(&#x27;live2Placeholder&#x27;).style.display=&#x27;none&#x27;;
-    document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=&#x27;Real Binance candle loaded&lt;br&gt;Start Live Signal untuk websocket realtime&#x27;;
-    live2SetDebug(&#x27;preview real Binance Futures loaded&#x27;);
-  }catch(e){
-    // fallback only if Binance endpoint blocked
-    try{
-      if(!initLive2Chart()) return;
-      const now=Date.now();
-      live2Klines=/* disabled */ genSim(0,0,now-160*15*60*1000,now);
-      live2LoadChart();
-      document.getElementById(&#x27;live2Placeholder&#x27;).style.display=&#x27;none&#x27;;
-      document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=&#x27;Binance Futures API gagal&lt;br&gt;Binance API gagal diakses&#x27;;
-      live2SetDebug(&#x27;dummy fallback disabled karena Binance gagal: &#x27;+e.message);
-    }catch(_){}
-  }
+    document.getElementById(&#x27;live2ChartInfo&#x27;).innerHTML=&#x27;Preview candle loaded&lt;br&gt;Start Live Signal untuk live data&#x27;;
+  }catch(e){}
 }
 
-
-function refreshLive2PreviewOnTf(){ if(!live2Running) loadLive2Preview(); }
 
 function updateLive2StrategyInfo(){
   const v=document.getElementById(&#x27;live2Strategy&#x27;).value;
@@ -1821,8 +2130,7 @@ updateLive2StrategyInfo();
 setLiveButtons(false);
 &lt;/script&gt;
 &lt;/body&gt;
-&lt;/html&gt;" onload="resizeTradeFrame()"></iframe></div>
-  </section>
+&lt;/html&gt;" onload="resizeFrame('tradeFrame')"></iframe></div></section>
 
   <section id="poly" class="section">
     <div class="card">
@@ -1831,434 +2139,661 @@ setLiveButtons(false);
         <div><label>AI Mode</label><select id="polyMode"><option>Balanced AI</option><option>Strict Quality</option><option>Contrarian</option></select></div>
         <div><label>Market Filter</label><input id="polySearch" value="bitcoin" placeholder="bitcoin, eth, fed..."></div>
         <div><label>Balance</label><input id="polyBalance" value="1000" type="number"></div>
-        <div><label>From Date</label><input id="polyFrom" type="date" value="2025-01-01"></div>
-        <div><label>To Date</label><input id="polyTo" type="date" value="2025-12-31"></div>
-        <div><label>History Interval</label><select id="polyInterval"><option value="1h">1H</option><option value="6h">6H</option><option value="1d">1D</option><option value="1w">1W</option></select></div><div><label>Stake / Call %</label><input id="polyStakePct" value="12" type="number" min="1" max="50"></div><div><label>Target Odds</label><input id="polyTargetOdds" value="0.04" type="number" min="0.01" max="0.30" step="0.01"></div><div><label>Stop Odds</label><input id="polyStopOdds" value="0.03" type="number" min="0.01" max="0.30" step="0.01"></div>
+        <div><label>Stake %</label><input id="polyStakePct" value="12" type="number"></div>
+        <div><label>Target Odds</label><input id="polyTargetOdds" value="0.04" type="number" step="0.01"></div>
+        <div><label>Stop Odds</label><input id="polyStopOdds" value="0.03" type="number" step="0.01"></div>
       </div>
-      <div class="btns">
-        <button onclick="fetchRealPolyMarkets()">Fetch Real Markets</button>
-        <button class="green" onclick="scanPoly()">Generate Real Live Signal</button>
-        <button class="neutralBtn" onclick="openPolyCall()">Open AI Call</button>
-        <button onclick="runPolyBacktest()">Run Real History Backtest</button>
-        <button class="danger" onclick="clearHistory()">Clear History</button>
-      </div>
-      <div id="polyStatus" class="statusline">Status: belum fetch market. Klik <b>Fetch Real Markets</b> dulu.</div>
-      <div class="note">Live market diambil dari Polymarket Gamma API. Backtest mengambil price history CLOB. Setting default sudah dibuat lebih aktif: stake 12%, target odds 0.04, stop odds 0.03.</div>
+      <div class="btns"><button onclick="fetchRealPolyMarkets()">Fetch Real Markets</button><button class="greenBtn" onclick="scanPoly()">Generate Real Live Signal</button><button class="darkBtn" onclick="openPolyCall()">Open AI Call</button><button onclick="runPolyBacktest()">Run Paper Backtest</button><button class="redBtn" onclick="clearHistory()">Clear History</button></div>
+      <div id="polyStatus" class="statusline">Status: belum fetch market.</div>
     </div>
 
     <div class="card">
-      <div class="card-title">Poly Live Signal — Real Market AI Call</div>
-      <div class="signal">
-        <div class="signal-top"><div id="polyAction" class="action yellow">WAIT</div><div id="polyScore" class="score">Confidence --%</div></div>
-        <div class="levels">
-          <div class="level"><small>Market</small><b id="polyMarket">--</b></div>
-          <div class="level"><small>Entry Odds</small><b id="polyEntry">--</b></div>
-          <div class="level"><small>Target</small><b id="polyTarget">--</b></div>
-          <div class="level"><small>Stop</small><b id="polyStop">--</b></div>
-        </div>
+      <div class="card-title">Poly Live Signal</div>
+      <div class="signal"><div class="signal-top"><div id="polyAction" class="action yellow">WAIT</div><div id="polyScore" class="score">Confidence --%</div></div><div class="levels"><div class="level"><small>Market</small><b id="polyMarket">--</b></div><div class="level"><small>Entry Odds</small><b id="polyEntry">--</b></div><div class="level"><small>Target</small><b id="polyTarget">--</b></div><div class="level"><small>Stop</small><b id="polyStop">--</b></div></div></div>
+      <div class="reason-grid"><div class="reason-box"><small>Odds</small><b id="polyReasonOdds">--</b></div><div class="reason-box"><small>Volume</small><b id="polyReasonVol">--</b></div><div class="reason-box"><small>Liquidity</small><b id="polyReasonLiq">--</b></div><div class="reason-box"><small>Token ID</small><b id="polyReasonToken">--</b></div></div>
+    </div>
+
+    <div class="grid5"><div class="metric"><small>Poly Balance</small><b id="polyBal" class="good">$1,000</b><span>paper</span></div><div class="metric"><small>AI Profit</small><b id="polyProfit" class="good">$0</b><span>paper backtest</span></div><div class="metric"><small>Win Rate</small><b id="polyWR">--%</b><span>closed calls</span></div><div class="metric"><small>Real Markets</small><b id="realMarketCount" class="blue">0</b><span>loaded</span></div><div class="metric"><small>Active Calls</small><b id="activeCount" class="blue">0</b><span>open</span></div></div>
+
+    <div class="card"><div class="card-title">Real Polymarket Open Markets</div><div id="realMarketsTable" class="table"><div class="row market-row head"><span>Market</span><span>YES</span><span>NO</span><span>Volume</span><span>Liquidity</span><span>AI Signal</span><span>Entry</span><span>Conf</span></div></div></div>
+    <div class="grid2"><div class="card"><div class="card-title">Active Poly Calls</div><div id="activeCalls" class="table"><div class="row call-row head"><span>Time</span><span>Side</span><span>Market</span><span>Entry</span><span>Now</span><span>Target</span><span>Status</span><span>PnL</span></div></div></div><div class="card"><div class="card-title">Live Signal Log</div><div id="polyLiveLog" class="table"><div class="row log-row head"><span>Time</span><span>Call</span><span>Market</span><span>Entry</span><span>Target</span><span>Conf</span></div></div></div></div>
+    <div class="card"><div class="card-title">Poly Paper Backtest Equity</div><div class="chartbox"><canvas id="polyChart"></canvas></div></div>
+    <div class="card"><div class="card-title">Complete Poly Backtest History</div><div id="polyHistory" class="table"><div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div></div></div>
+  </section>
+
+  <section id="forex" class="section">
+    <div class="card">
+      <div class="card-title">XAUUSD Signal Controls</div>
+      <div class="controls">
+        <div><label>Pair</label><input value="XAUUSD" readonly></div>
+        <div><label>Data API</label><select id="xauDataSource"><option value="stooq" selected>Stooq Daily CSV</option></select></div>
+        <div><label>Balance</label><input id="xauBalance" value="1000" type="number"></div>
+        <div><label>Risk %</label><input id="xauRisk" value="1" type="number" step="0.1"></div>
+        <div><label>TP Points</label><input id="xauTPPoints" value="45" type="number"></div>
+        <div><label>SL Points</label><input id="xauSLPoints" value="25" type="number"></div>
       </div>
-      <div class="reason-grid">
-        <div class="reason-box"><small>Odds</small><b id="polyReasonOdds">--</b></div>
-        <div class="reason-box"><small>Volume</small><b id="polyReasonVol">--</b></div>
-        <div class="reason-box"><small>Liquidity</small><b id="polyReasonLiq">--</b></div>
-        <div class="reason-box"><small>Token ID</small><b id="polyReasonToken">--</b></div>
+      <div class="controls">
+        <div><label>From Date</label><input id="xauFrom" type="date" value="2023-01-01"></div>
+        <div><label>To Date</label><input id="xauTo" type="date"></div>
+        <div><label>Strategy</label><select id="xauStrategy"><option value="trend" selected>EMA Trend</option><option value="pullback">Pullback</option><option value="breakout">Breakout</option></select></div>
+        <div><label>Mode</label><select id="xauMode"><option value="balanced" selected>Balanced</option><option value="strict">Strict</option><option value="active">Active</option></select></div>
+        <div><label>Timeframe</label><input value="Daily" readonly></div>
+        <div><label>Status</label><input id="xauStatusBox" value="READY" readonly></div>
       </div>
+      <div class="btns">
+        <button onclick="loadXAUData()">Fetch XAUUSD History</button>
+        <button class="greenBtn" onclick="generateXAUSignal()">Generate XAU Signal</button>
+        <button onclick="runXAUBacktest()">Run XAUUSD Backtest</button>
+        <button class="darkBtn" onclick="openXAUPaper()">Open Paper Trade</button>
+        <button class="redBtn" onclick="clearXAUHistory()">Clear History</button>
+      </div>
+      <div id="xauStatus" class="statusline">Status: XAUUSD only. Backtest memakai historical daily CSV Stooq; chart memakai TradingView XAUUSD.</div>
     </div>
 
     <div class="grid5">
-      <div class="metric"><small>Poly Balance</small><b id="polyBal" class="good">$1,000</b><span>paper</span></div>
-      <div class="metric"><small>AI Profit</small><b id="polyProfit" class="good">$0</b><span>history backtest</span></div>
-      <div class="metric"><small>Win Rate</small><b id="polyWR">--%</b><span>closed calls</span></div>
-      <div class="metric"><small>Real Markets</small><b id="realMarketCount" class="blue">0</b><span>loaded</span></div>
-      <div class="metric"><small>Active Calls</small><b id="activeCount" class="blue">0</b><span>open</span></div>
+      <div class="metric"><small>Pair</small><b class="blue">XAUUSD</b><span>Gold / USD</span></div>
+      <div class="metric"><small>Last Close</small><b id="xauLast">--</b><span>daily close</span></div>
+      <div class="metric"><small>Signal</small><b id="xauSignal" class="yellow">WAIT</b><span>AI strategy</span></div>
+      <div class="metric"><small>TP</small><b id="xauTP" class="good">--</b><span>target</span></div>
+      <div class="metric"><small>SL</small><b id="xauSL" class="bad">--</b><span>stop</span></div>
     </div>
 
-    <div class="card">
-      <div class="card-title">Backtest Summary</div>
-      <div class="grid6">
-        <div class="metric"><small>Total Calls</small><b id="polyTotalCalls">--</b><span>generated</span></div>
-        <div class="metric"><small>Closed Calls</small><b id="polyClosedCalls">--</b><span>TP/SL</span></div>
-        <div class="metric"><small>Avg Confidence</small><b id="polyAvgConf">--%</b><span>AI score</span></div>
-        <div class="metric"><small>Best Month</small><b id="polyBestMonth" class="good">--</b><span>highest pnl</span></div>
-        <div class="metric"><small>Worst Month</small><b id="polyWorstMonth" class="bad">--</b><span>lowest pnl</span></div>
-        <div class="metric"><small>Max DD</small><b id="polyDD" class="yellow">--%</b><span>paper equity</span></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">XAUUSD Active Signal</div>
+        <div class="signal">
+          <div class="signal-top">
+            <div id="xauAction" class="action yellow">WAIT</div>
+            <div id="xauScore" class="score">Score --/100</div>
+          </div>
+          <div class="levels">
+            <div class="level"><small>Entry</small><b id="xauEntry">--</b></div>
+            <div class="level"><small>TP</small><b id="xauTpLevel">--</b></div>
+            <div class="level"><small>SL</small><b id="xauSlLevel">--</b></div>
+            <div class="level"><small>Risk</small><b id="xauRiskBox">--</b></div>
+          </div>
+        </div>
+        <div class="reason-grid">
+          <div class="reason-box"><small>Trend</small><b id="xauTrend">--</b></div>
+          <div class="reason-box"><small>RSI</small><b id="xauRsi">--</b></div>
+          <div class="reason-box"><small>Momentum</small><b id="xauMomentum">--</b></div>
+          <div class="reason-box"><small>Bias</small><b id="xauBias">--</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">XAUUSD Backtest Summary</div>
+        <div class="grid5">
+          <div class="metric"><small>Balance</small><b id="xauBtBalance" class="good">$1,000</b><span>paper</span></div>
+          <div class="metric"><small>Profit</small><b id="xauBtProfit" class="good">$0</b><span>paper pnl</span></div>
+          <div class="metric"><small>Trades</small><b id="xauBtTrades">0</b><span>closed</span></div>
+          <div class="metric"><small>Win Rate</small><b id="xauBtWR">--%</b><span>TP/SL</span></div>
+          <div class="metric"><small>Max DD</small><b id="xauBtDD" class="yellow">--%</b><span>drawdown</span></div>
+        </div>
+        <div class="chartbox" style="height:260px;margin-top:12px"><canvas id="xauEquityChart"></canvas></div>
       </div>
     </div>
 
-    <div class="card"><div class="card-title">Real Polymarket Open Markets</div><div id="realMarketsTable" class="table"><div class="row market-row head"><span>Market</span><span>YES</span><span>NO</span><span>Volume</span><span>Liquidity</span><span>AI Signal</span><span>Entry</span><span>Conf</span></div></div></div>
-
-    <div class="grid2">
-      <div class="card"><div class="card-title">Active Poly Calls</div><div id="activeCalls" class="table"><div class="row call-row head"><span>Time</span><span>Side</span><span>Market</span><span>Entry</span><span>Now</span><span>Target</span><span>Status</span><span>PnL</span></div></div></div>
-      <div class="card"><div class="card-title">Live Signal Log</div><div id="polyLiveLog" class="table"><div class="row log-row head"><span>Time</span><span>Call</span><span>Market</span><span>Entry</span><span>Target</span><span>Conf</span></div></div></div>
+    <div class="card">
+      <div class="card-title">TradingView XAUUSD Chart</div>
+      <div style="height:650px;border:1px solid #26354d;border-radius:16px;overflow:hidden;background:#05080d">
+        <iframe
+          title="TradingView XAUUSD"
+          src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=60&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=0b0f14&studies=[]&theme=dark&style=1&timezone=Asia%2FJakarta&withdateranges=1&hideideas=1&locale=en"
+          style="width:100%;height:100%;border:0"
+          allowtransparency="true"
+          scrolling="no">
+        </iframe>
+      </div>
+      <div class="note">Untuk backtest intraday 5m/15m/1H yang lebih presisi, pakai API ber-key seperti Twelve Data / TraderMade / broker MT5. File ini memakai Stooq daily CSV tanpa API key untuk backtest dasar XAUUSD.</div>
     </div>
 
-    <div class="card"><div class="card-title">Poly Real History Backtest Equity</div><div class="chartbox"><canvas id="polyChart"></canvas></div></div>
-    <div class="card"><div class="card-title">Complete Poly Backtest History</div><div id="polyHistory" class="table"><div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div></div></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">XAUUSD Paper Trades</div>
+        <div id="xauActive" class="table">
+          <div class="row hist-row head"><span>Time</span><span>Side</span><span>Pair</span><span>Entry</span><span>TP</span><span>SL</span><span>Status</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">XAUUSD Backtest History</div>
+        <div id="xauHistory" class="table">
+          <div class="row hist-row head"><span>Date</span><span>Side</span><span>Pair</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>
+        </div>
+      </div>
+    </div>
   </section>
-</div>
 
-<script>
-let polyMarkets=[], currentPoly=null, polyChart=null;
-let polyEquityLabels=['Start'], polyEquityData=[1000];
 
-function showTab(id, el){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById(id).classList.add('active'); el.classList.add('active');
-  if(id==='poly') setTimeout(renderPolyChart,80);
-  if(id==='trade') setTimeout(resizeTradeFrame,250);
+
+  <section id="eaBoys" class="section">
+    <div class="card">
+      <div class="card-title">EA Boys V8 Logic Signal — Dari Script MQ5 Kamu</div>
+      <div class="controls">
+        <div><label>Bridge URL</label><input id="eaBridgeUrl" value="http://127.0.0.1:8000/rates"></div>
+        <div><label>Symbol</label><input id="eaSymbol" value="XAUUSD"></div>
+        <div><label>Timeframe</label><select id="eaTf"><option>M5</option><option selected>M15</option><option>M30</option><option>H1</option></select></div>
+        <div><label>Candle Count</label><input id="eaCount" value="300" type="number"></div>
+        <div><label>Spread Pts</label><input id="eaSpread" value="80" type="number"></div>
+        <div><label>Status</label><input id="eaStatusBox" value="READY" readonly></div>
+      </div>
+
+      <div class="controls">
+        <div><label>Session</label><select id="eaUseSession"><option value="true" selected>ON</option><option value="false">OFF</option></select></div>
+        <div><label>Start Hour</label><input id="eaStartHour" value="7" type="number"></div>
+        <div><label>End Hour</label><input id="eaEndHour" value="20" type="number"></div>
+        <div><label>Lookback Bars</label><input id="eaLookback" value="8" type="number"></div>
+        <div><label>Entry Buffer Pts</label><input id="eaBuffer" value="80" type="number"></div>
+        <div><label>Expire Bars</label><input id="eaExpire" value="4" type="number"></div>
+      </div>
+
+      <div class="controls">
+        <div><label>SL Points</label><input id="eaSLPts" value="200" type="number"></div>
+        <div><label>TP Points</label><input id="eaTPPts" value="500" type="number"></div>
+        <div><label>ATR Period</label><input id="eaATRPeriod" value="14" type="number"></div>
+        <div><label>ATR Min Mult</label><input id="eaATRMult" value="0.7" type="number" step="0.1"></div>
+        <div><label>ATR MA Period</label><input id="eaATRMA" value="50" type="number"></div>
+        <div><label>Min Range Pts</label><input id="eaMinRange" value="300" type="number"></div>
+      </div>
+
+      <div class="controls">
+        <div><label>EMA Fast</label><input id="eaEmaFast" value="50" type="number"></div>
+        <div><label>EMA Slow</label><input id="eaEmaSlow" value="200" type="number"></div>
+        <div><label>Point Size</label><input id="eaPoint" value="0.01" type="number" step="0.01"></div>
+        <div><label>Lot</label><input id="eaLot" value="0.10" type="number" step="0.01"></div>
+        <div><label>Max Spread Pts</label><input id="eaMaxSpread" value="200" type="number"></div>
+        <div><label>Daily Loss OK</label><select id="eaDailyOK"><option value="true" selected>TRUE</option><option value="false">FALSE</option></select></div>
+      </div>
+
+      <div class="btns">
+        <button onclick="fetchEAFromBridge()">Fetch MT5 Bridge Data</button>
+        <button class="greenBtn" onclick="generateBoysSignal()">Generate Signal dari Logic EA</button>
+        <button onclick="loadBoysDemoCandles()">Load Demo Candles</button>
+        <button class="darkBtn" onclick="copyEASignal()">Copy Signal</button>
+        <button class="redBtn" onclick="clearEAHistory()">Clear</button>
+      </div>
+      <div id="eaStatus" class="statusline">Status: ini meniru logic Boys_V8_Plus.mq5. Untuk data real Exness, jalankan MT5 Python bridge lokal.</div>
+    </div>
+
+    <div class="grid5">
+      <div class="metric"><small>EA Signal</small><b id="eaSignalBox" class="yellow">WAIT</b><span>BuyStop / SellStop</span></div>
+      <div class="metric"><small>Trend Filter</small><b id="eaTrendBox">--</b><span>EMA 50/200</span></div>
+      <div class="metric"><small>ATR Filter</small><b id="eaATRBox">--</b><span>anti-choppy</span></div>
+      <div class="metric"><small>Range Filter</small><b id="eaRangeBox">--</b><span>HH-LL</span></div>
+      <div class="metric"><small>AI Score</small><b id="eaScoreBox" class="blue">--</b><span>EA confidence</span></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Active Signal Dari Logic EA</div>
+        <div class="signal">
+          <div class="signal-top">
+            <div id="eaAction" class="action yellow">WAIT</div>
+            <div id="eaScore" class="score">Score --/100</div>
+          </div>
+          <div class="levels">
+            <div class="level"><small>Buy Stop</small><b id="eaBuyStop">--</b></div>
+            <div class="level"><small>Sell Stop</small><b id="eaSellStop">--</b></div>
+            <div class="level"><small>TP / SL</small><b id="eaTPSL">--</b></div>
+            <div class="level"><small>Expire</small><b id="eaExpireBox">--</b></div>
+          </div>
+        </div>
+        <div class="reason-grid">
+          <div class="reason-box"><small>Session</small><b id="eaSessionReason">--</b></div>
+          <div class="reason-box"><small>Spread</small><b id="eaSpreadReason">--</b></div>
+          <div class="reason-box"><small>HH / LL</small><b id="eaHHLLReason">--</b></div>
+          <div class="reason-box"><small>Decision</small><b id="eaDecisionReason">--</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">EA Logic Explanation</div>
+        <div class="table">
+          <div class="row hist-row head"><span>Step</span><span>Logic</span><span>Input</span><span>Status</span><span>Result</span><span>Notes</span><span>Score</span></div>
+          <div id="eaLogicRows"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Signal History</div>
+      <div id="eaHistory" class="table">
+        <div class="row hist-row head"><span>Time</span><span>Signal</span><span>Symbol</span><span>Entry</span><span>TP</span><span>SL</span><span>Reason</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Format Data Bridge yang Dibutuhkan</div>
+      <div class="note">
+        Endpoint lokal contoh:
+        <code>http://127.0.0.1:8000/rates?symbol=XAUUSD&amp;timeframe=M15&amp;count=300</code>
+        harus mengembalikan JSON:
+        <code>[{"time": "...", "open": 1, "high": 1, "low": 1, "close": 1, "tick_volume": 1}]</code>.
+      </div>
+    </div>
+  </section>
+
+
+  <section id="sol" class="section"><div class="frame-card"><iframe class="app-frame" id="solFrame" srcdoc="
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;id&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1.0&quot;&gt;
+&lt;title&gt;SOL Degen Active Signal Dashboard&lt;/title&gt;
+&lt;script src=&quot;https://cdn.jsdelivr.net/npm/chart.js&quot;&gt;&lt;/script&gt;
+&lt;style&gt;
+:root{
+  --bg:#070b12;--card:#0f172a;--card2:#111827;--line:#26354d;
+  --text:#f8fafc;--muted:#94a3b8;--green:#4ade80;--red:#f87171;
+  --yellow:#fbbf24;--blue:#60a5fa;--purple:#a78bfa
 }
-function resizeTradeFrame(){
-  const frame=document.getElementById('tradeFrame');
-  try{const doc=frame.contentWindow.document;frame.style.height=(Math.max(1800,doc.documentElement.scrollHeight,doc.body.scrollHeight)+40)+'px';}
-  catch(e){frame.style.height='2300px';}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Arial,sans-serif}
+.container{max-width:1280px;margin:auto;padding:22px}
+.header{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}
+.logo{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,#9945ff,#14f195);display:flex;align-items:center;justify-content:center;font-weight:1000;font-size:22px}
+.brand{display:flex;gap:12px;align-items:center}
+h1{font-size:24px}.sub{font-size:12px;color:var(--muted);margin-top:4px}
+.pill{border:1px solid #14f19566;background:#14f19514;color:#4ade80;border-radius:999px;padding:8px 12px;font-weight:900;font-size:11px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:900;margin-bottom:12px}
+.controls{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px}
+label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px}
+input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0b1120;color:white}
+button{cursor:pointer;background:#2563eb;border-color:#2563eb;font-weight:900}
+.btns{display:flex;gap:8px;flex-wrap:wrap}.btns button{width:auto}
+.greenBtn{background:#166534;border-color:#15803d}.redBtn{background:#7f1d1d;border-color:#991b1b}.darkBtn{background:#0b1120;border-color:#334155}
+.grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.metric{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:13px}
+.metric small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:6px}
+.metric b{font-size:20px}.metric span{display:block;color:#64748b;font-size:10px;margin-top:4px}
+.good{color:var(--green)!important}.bad{color:var(--red)!important}.yellow{color:var(--yellow)!important}.blue{color:var(--blue)!important}.purple{color:var(--purple)!important}
+.signal-main{background:linear-gradient(180deg,#111827,#0b1120);border:1px solid #334155;border-radius:18px;padding:18px}
+.signal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+.action{font-size:38px;font-weight:1000}
+.score{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px 14px;font-weight:900;color:#cbd5e1}
+.token-title{font-size:22px;font-weight:1000;margin-top:4px}
+.token-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.level{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:12px}
+.level small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;margin-bottom:6px}
+.level b{font-size:15px;word-break:break-word}
+.research{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.research-box{background:#111827;border:1px solid #334155;border-radius:14px;padding:13px}
+.research-box small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:7px}
+.research-box b{font-size:15px}.research-box p{font-size:12px;color:#cbd5e1;line-height:1.5;margin-top:6px}
+.table{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0b1120}
+.row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #1f2a3d;font-size:11px;align-items:center}
+.row:last-child{border-bottom:none}
+.head{background:#111827;color:var(--muted);text-transform:uppercase;font-weight:900;font-size:10px}
+.scanner-row{grid-template-columns:1.15fr 90px 85px 85px 70px 90px 90px 70px 120px}
+.history-row{grid-template-columns:70px 1fr 90px 90px 90px 85px 80px}
+.copyBtn{padding:6px 10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:white;font-size:10px}
+.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}
+.buy{background:#16a34a22;color:#4ade80;border:1px solid #16a34a66}
+.watch{background:#d9770622;color:#fbbf24;border:1px solid #d9770666}
+.avoid{background:#dc262622;color:#f87171;border:1px solid #dc262666}
+.note{font-size:10px;color:#64748b;line-height:1.6;margin-top:10px}
+.chartbox{height:260px;background:#070b12;border:1px solid var(--line);border-radius:14px;padding:10px}
+.status{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}
+@media(max-width:950px){
+  .grid2,.grid4,.grid5,.controls,.levels,.research{grid-template-columns:1fr 1fr}
+  .scanner-row,.history-row{grid-template-columns:80px 1fr 80px 80px}
+  .scanner-row span:nth-child(n+5),.history-row span:nth-child(n+5){display:none}
 }
-setInterval(()=>{if(document.getElementById('trade').classList.contains('active')) resizeTradeFrame();},1500);
-function money(v){return '$'+Number(v||0).toLocaleString('en-US',{maximumFractionDigits:0});}
-function pct(v){return (Number(v||0)*100).toFixed(0)+'%';}
-function safeJson(x, fallback=[]){try{return typeof x==='string'?JSON.parse(x):x||fallback}catch(e){return fallback}}
-function setStatus(t){document.getElementById('polyStatus').innerHTML='Status: '+t;}
+@media(max-width:600px){
+  .grid2,.grid4,.grid5,.controls,.levels,.research{grid-template-columns:1fr}
+  .header{flex-direction:column;align-items:flex-start}
+}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;container&quot;&gt;
+  &lt;div class=&quot;header&quot;&gt;
+    &lt;div class=&quot;brand&quot;&gt;
+      &lt;div class=&quot;logo&quot;&gt;S&lt;/div&gt;
+      &lt;div&gt;
+        &lt;h1&gt;SOL Degen Active Signal&lt;/h1&gt;
+        &lt;div class=&quot;sub&quot;&gt;DexScreener Real API · AI Meme Coin Research · Copy CA · Paper Trade&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;pill&quot;&gt;SOL DEGEN MODE&lt;/div&gt;
+  &lt;/div&gt;
 
-function extractMarketsFromEvents(events){
-  const out=[];
-  for(const ev of events){
-    const ms=ev.markets || [];
-    for(const m of ms){
-      if(m.closed || m.active===false) continue;
-      const outcomes=safeJson(m.outcomes,[]);
-      const prices=safeJson(m.outcomePrices,[]);
-      const tokenIds=safeJson(m.clobTokenIds || m.clobTokenIDs || m.clobTokenId,[]);
-      const yesIdx=outcomes.findIndex(o=>String(o).toLowerCase().includes('yes'));
-      const noIdx=outcomes.findIndex(o=>String(o).toLowerCase().includes('no'));
-      const y=yesIdx>=0?Number(prices[yesIdx]):Number(prices[0]);
-      const n=noIdx>=0?Number(prices[noIdx]):Number(prices[1] ?? (1-y));
-      const yToken=yesIdx>=0?tokenIds[yesIdx]:tokenIds[0];
-      const nToken=noIdx>=0?tokenIds[noIdx]:tokenIds[1];
-      if(!Number.isFinite(y) || !yToken) continue;
-      out.push({
-        id:m.id, slug:m.slug, title:m.question || m.title || ev.title || 'Untitled market',
-        eventTitle:ev.title || '', yes:y, no:Number.isFinite(n)?n:1-y,
-        volume:Number(m.volume || m.volumeNum || m.volume24hr || ev.volume || 0),
-        liquidity:Number(m.liquidity || m.liquidityNum || 0),
-        yesToken:yToken, noToken:nToken, endDate:m.endDate || ev.endDate || ''
-      });
-    }
-  }
-  return out;
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;div class=&quot;card-title&quot;&gt;Scanner Controls&lt;/div&gt;
+    &lt;div class=&quot;controls&quot;&gt;
+      &lt;div&gt;&lt;label&gt;Search&lt;/label&gt;&lt;input id=&quot;solSearch&quot; value=&quot;solana&quot; placeholder=&quot;solana, bonk, pump...&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Min Liquidity&lt;/label&gt;&lt;input id=&quot;minLiq&quot; value=&quot;10000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Min Volume 24H&lt;/label&gt;&lt;input id=&quot;minVol&quot; value=&quot;50000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Max Age Hours&lt;/label&gt;&lt;input id=&quot;maxAge&quot; value=&quot;96&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Stake %&lt;/label&gt;&lt;input id=&quot;stakePct&quot; value=&quot;8&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Mode&lt;/label&gt;&lt;select id=&quot;mode&quot;&gt;&lt;option&gt;Balanced&lt;/option&gt;&lt;option&gt;Strict Safety&lt;/option&gt;&lt;option&gt;High Degen&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;controls&quot;&gt;
+      &lt;div&gt;&lt;label&gt;TP1 %&lt;/label&gt;&lt;input id=&quot;tp1&quot; value=&quot;25&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;TP2 %&lt;/label&gt;&lt;input id=&quot;tp2&quot; value=&quot;60&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;SL %&lt;/label&gt;&lt;input id=&quot;sl&quot; value=&quot;18&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Paper Balance&lt;/label&gt;&lt;input id=&quot;paperBalInput&quot; value=&quot;1000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Auto Refresh&lt;/label&gt;&lt;select id=&quot;refreshSec&quot;&gt;&lt;option value=&quot;15&quot;&gt;15s&lt;/option&gt;&lt;option value=&quot;30&quot; selected&gt;30s&lt;/option&gt;&lt;option value=&quot;60&quot;&gt;60s&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Status&lt;/label&gt;&lt;input id=&quot;statusBox&quot; value=&quot;READY&quot; readonly&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;btns&quot;&gt;
+      &lt;button onclick=&quot;fetchDex()&quot;&gt;Fetch DexScreener&lt;/button&gt;
+      &lt;button class=&quot;greenBtn&quot; onclick=&quot;generateActiveSignal()&quot;&gt;Generate Active Signal&lt;/button&gt;
+      &lt;button onclick=&quot;openPaperTrade()&quot;&gt;Open Paper Trade&lt;/button&gt;
+      &lt;button onclick=&quot;runBacktest()&quot;&gt;Run Paper Backtest&lt;/button&gt;
+      &lt;button class=&quot;darkBtn&quot; onclick=&quot;startAuto()&quot;&gt;Start Auto Refresh&lt;/button&gt;
+      &lt;button class=&quot;redBtn&quot; onclick=&quot;stopAuto()&quot;&gt;Stop&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;div id=&quot;status&quot; class=&quot;status&quot;&gt;Status: klik Fetch DexScreener untuk mengambil data token SOL real.&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;grid5&quot;&gt;
+    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;Tokens Loaded&lt;/small&gt;&lt;b id=&quot;mLoaded&quot; class=&quot;blue&quot;&gt;0&lt;/b&gt;&lt;span&gt;real pairs&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;BUY Signals&lt;/small&gt;&lt;b id=&quot;mBuy&quot; class=&quot;good&quot;&gt;0&lt;/b&gt;&lt;span&gt;score tinggi&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;WATCH&lt;/small&gt;&lt;b id=&quot;mWatch&quot; class=&quot;yellow&quot;&gt;0&lt;/b&gt;&lt;span&gt;monitor dulu&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;AVOID&lt;/small&gt;&lt;b id=&quot;mAvoid&quot; class=&quot;bad&quot;&gt;0&lt;/b&gt;&lt;span&gt;risk tinggi&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;Paper Balance&lt;/small&gt;&lt;b id=&quot;paperBal&quot; class=&quot;good&quot;&gt;$1,000&lt;/b&gt;&lt;span&gt;simulasi&lt;/span&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;grid2&quot;&gt;
+    &lt;div class=&quot;card&quot;&gt;
+      &lt;div class=&quot;card-title&quot;&gt;Active Buy Signal Dashboard&lt;/div&gt;
+      &lt;div class=&quot;signal-main&quot;&gt;
+        &lt;div class=&quot;signal-top&quot;&gt;
+          &lt;div&gt;
+            &lt;div id=&quot;signalAction&quot; class=&quot;action yellow&quot;&gt;WAIT&lt;/div&gt;
+            &lt;div id=&quot;signalToken&quot; class=&quot;token-title&quot;&gt;Belum ada token dipilih&lt;/div&gt;
+            &lt;div id=&quot;signalDesc&quot; class=&quot;token-sub&quot;&gt;Klik Fetch lalu Generate Active Signal.&lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div id=&quot;signalScore&quot; class=&quot;score&quot;&gt;Score --/100&lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;levels&quot;&gt;
+          &lt;div class=&quot;level&quot;&gt;&lt;small&gt;Entry&lt;/small&gt;&lt;b id=&quot;entry&quot;&gt;--&lt;/b&gt;&lt;/div&gt;
+          &lt;div class=&quot;level&quot;&gt;&lt;small&gt;TP1 / TP2&lt;/small&gt;&lt;b id=&quot;tpLevels&quot;&gt;--&lt;/b&gt;&lt;/div&gt;
+          &lt;div class=&quot;level&quot;&gt;&lt;small&gt;SL&lt;/small&gt;&lt;b id=&quot;slLevel&quot;&gt;--&lt;/b&gt;&lt;/div&gt;
+          &lt;div class=&quot;level&quot;&gt;&lt;small&gt;CA&lt;/small&gt;&lt;b id=&quot;caShort&quot;&gt;--&lt;/b&gt;&lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;btns&quot; style=&quot;margin-top:14px&quot;&gt;
+          &lt;button onclick=&quot;copySelectedCA()&quot;&gt;Copy CA&lt;/button&gt;
+          &lt;button class=&quot;greenBtn&quot; onclick=&quot;openPaperTrade()&quot;&gt;Open Paper Trade&lt;/button&gt;
+          &lt;button class=&quot;darkBtn&quot; onclick=&quot;openDex()&quot;&gt;Open DexScreener&lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;card&quot;&gt;
+      &lt;div class=&quot;card-title&quot;&gt;AI Research Token&lt;/div&gt;
+      &lt;div class=&quot;research&quot;&gt;
+        &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Liquidity&lt;/small&gt;&lt;b id=&quot;rLiq&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rLiqText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
+        &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Volume&lt;/small&gt;&lt;b id=&quot;rVol&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rVolText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
+        &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Age &amp; Momentum&lt;/small&gt;&lt;b id=&quot;rAge&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rAgeText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
+        &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Rug Risk&lt;/small&gt;&lt;b id=&quot;rRisk&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rRiskText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;grid2&quot;&gt;
+    &lt;div class=&quot;card&quot;&gt;
+      &lt;div class=&quot;card-title&quot;&gt;Paper Backtest Summary&lt;/div&gt;
+      &lt;div class=&quot;grid4&quot;&gt;
+        &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;Total Trades&lt;/small&gt;&lt;b id=&quot;btTrades&quot;&gt;0&lt;/b&gt;&lt;span&gt;paper&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;Win Rate&lt;/small&gt;&lt;b id=&quot;btWR&quot;&gt;--%&lt;/b&gt;&lt;span&gt;TP/SL&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;Profit&lt;/small&gt;&lt;b id=&quot;btProfit&quot; class=&quot;good&quot;&gt;$0&lt;/b&gt;&lt;span&gt;paper pnl&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;Best Token&lt;/small&gt;&lt;b id=&quot;btBest&quot; class=&quot;blue&quot;&gt;--&lt;/b&gt;&lt;span&gt;highest score&lt;/span&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class=&quot;chartbox&quot; style=&quot;margin-top:12px&quot;&gt;&lt;canvas id=&quot;equityChart&quot;&gt;&lt;/canvas&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;card&quot;&gt;
+      &lt;div class=&quot;card-title&quot;&gt;Active Paper Trades&lt;/div&gt;
+      &lt;div id=&quot;activeTable&quot; class=&quot;table&quot;&gt;
+        &lt;div class=&quot;row history-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Entry&lt;/span&gt;&lt;span&gt;TP1&lt;/span&gt;&lt;span&gt;SL&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;span&gt;PnL&lt;/span&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;div class=&quot;card-title&quot;&gt;Live SOL Meme Scanner&lt;/div&gt;
+    &lt;div id=&quot;scannerTable&quot; class=&quot;table&quot;&gt;
+      &lt;div class=&quot;row scanner-row head&quot;&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Price&lt;/span&gt;&lt;span&gt;Liq&lt;/span&gt;&lt;span&gt;Vol 24H&lt;/span&gt;&lt;span&gt;Age&lt;/span&gt;&lt;span&gt;MC&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;CA&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;note&quot;&gt;Klik baris token untuk melihat analisa. Copy CA tersedia per token.&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;div class=&quot;card-title&quot;&gt;Paper Trade History&lt;/div&gt;
+    &lt;div id=&quot;historyTable&quot; class=&quot;table&quot;&gt;
+      &lt;div class=&quot;row history-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Entry&lt;/span&gt;&lt;span&gt;Exit&lt;/span&gt;&lt;span&gt;Result&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;span&gt;PnL&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+let pairs=[], selected=null, timer=null, chart=null, equity=[1000], labels=[&#x27;Start&#x27;];
+
+function $(id){return document.getElementById(id)}
+function money(v){return &#x27;$&#x27;+Number(v||0).toLocaleString(&#x27;en-US&#x27;,{maximumFractionDigits:0})}
+function price(v){let n=Number(v||0); if(!n)return&#x27;--&#x27;; if(n&lt;0.00001)return n.toExponential(2); if(n&lt;0.01)return n.toFixed(7); return n.toFixed(5)}
+function ageHours(ms){if(!ms)return 9999; return Math.max(0,(Date.now()-Number(ms))/3600000)}
+function ageText(h){if(h&lt;1)return Math.round(h*60)+&#x27;m&#x27;; if(h&lt;24)return h.toFixed(1)+&#x27;h&#x27;; return (h/24).toFixed(1)+&#x27;d&#x27;}
+function caOf(p){return p?.baseToken?.address || p?.pairAddress || &#x27;&#x27;}
+function setStatus(t){$(&#x27;status&#x27;).innerHTML=&#x27;Status: &#x27;+t; $(&#x27;statusBox&#x27;).value=String(t).replace(/&lt;[^&gt;]*&gt;/g,&#x27;&#x27;).slice(0,18)}
+
+function scorePair(p){
+  const liq=Number(p.liquidity?.usd||0), vol=Number(p.volume?.h24||0), vol1=Number(p.volume?.h1||0);
+  const buys=Number(p.txns?.h24?.buys||0), sells=Number(p.txns?.h24?.sells||0);
+  const ch=Number(p.priceChange?.h24||0), age=ageHours(p.pairCreatedAt), mc=Number(p.marketCap||p.fdv||0);
+  const minLiq=Number($(&#x27;minLiq&#x27;).value||10000), minVol=Number($(&#x27;minVol&#x27;).value||50000), maxAge=Number($(&#x27;maxAge&#x27;).value||96);
+  const mode=$(&#x27;mode&#x27;).value;
+
+  let score=0, risk=0, notes=[];
+  if(liq&gt;=minLiq){score+=24; notes.push(&#x27;liquidity cukup&#x27;)} else {risk+=25; notes.push(&#x27;liquidity tipis&#x27;)}
+  if(vol&gt;=minVol){score+=24; notes.push(&#x27;volume masuk&#x27;)} else {risk+=18; notes.push(&#x27;volume rendah&#x27;)}
+  if(age&lt;=maxAge){score+=12; notes.push(&#x27;pair masih fresh&#x27;)} else {score+=4; notes.push(&#x27;pair sudah lama&#x27;)}
+  if(buys+sells&gt;200) score+=10;
+  if(buys&gt;sells) score+=10; else risk+=8;
+  if(ch&gt;10 &amp;&amp; ch&lt;250) score+=14;
+  if(ch&gt;300){risk+=22; notes.push(&#x27;terlalu overextended&#x27;)}
+  if(mc&gt;0 &amp;&amp; liq&gt;0 &amp;&amp; mc/liq&gt;40){risk+=28; notes.push(&#x27;MC/Liq tinggi&#x27;)}
+  if(vol1&gt;vol*0.22) score+=8;
+  if(mode===&#x27;Strict Safety&#x27;){risk+=10; score-=5}
+  if(mode===&#x27;High Degen&#x27;){score+=8; risk+=10}
+  score=Math.max(0,Math.min(100,Math.round(score-risk*0.45)));
+
+  let signal=&#x27;AVOID&#x27;;
+  if(score&gt;=72 &amp;&amp; liq&gt;=minLiq &amp;&amp; vol&gt;=minVol) signal=&#x27;BUY&#x27;;
+  else if(score&gt;=55) signal=&#x27;WATCH&#x27;;
+
+  let riskLabel=&#x27;HIGH&#x27;;
+  if(score&gt;=75 &amp;&amp; risk&lt;25) riskLabel=&#x27;MEDIUM&#x27;;
+  if(score&lt;45 || risk&gt;45) riskLabel=&#x27;VERY HIGH&#x27;;
+
+  return {score,signal,risk:riskLabel,liq,vol,vol1,buys,sells,ch,age,mc,notes};
 }
 
-async function fetchRealPolyMarkets(){
-  const rawQ=(document.getElementById('polySearch').value||'').trim().toLowerCase();
-  const keywords=rawQ.split(/[\s,]+/).filter(Boolean);
-  setStatus('mengambil data real dari Gamma API...');
-
-  async function getJson(url){
-    const res=await fetch(url);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    return await res.json();
-  }
-
+async function fetchDex(){
+  const q=$(&#x27;solSearch&#x27;).value.trim()||&#x27;solana&#x27;;
+  setStatus(&#x27;fetching DexScreener...&#x27;);
   try{
-    let list=[];
+    const res=await fetch(&#x27;https://api.dexscreener.com/latest/dex/search?q=&#x27;+encodeURIComponent(q));
+    if(!res.ok) throw new Error(&#x27;HTTP &#x27;+res.status);
+    const data=await res.json();
+    pairs=(data.pairs||[])
+      .filter(p=&gt;p.chainId===&#x27;solana&#x27; &amp;&amp; p.priceUsd &amp;&amp; caOf(p))
+      .map(p=&gt;({...p, ai:scorePair(p)}))
+      .sort((a,b)=&gt;(b.ai.score-a.ai.score)||((b.volume?.h24||0)-(a.volume?.h24||0)))
+      .slice(0,80);
 
-    // Primary: events endpoint. Polymarket docs recommend events because events include markets.
-    const eventsUrl='https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume&ascending=false&limit=100';
-    const events=await getJson(eventsUrl);
-    list=extractMarketsFromEvents(Array.isArray(events)?events:(events.data||[]));
-
-    // Fallback: direct markets endpoint if nested events returns 0.
-    if(!list.length){
-      const marketsUrl='https://gamma-api.polymarket.com/markets?active=true&closed=false&order=volume&ascending=false&limit=100';
-      const markets=await getJson(marketsUrl);
-      list=extractMarketsFromMarkets(Array.isArray(markets)?markets:(markets.data||[]));
-    }
-
-    // OR keyword matching. "bitcoin crypto" means bitcoin OR crypto, not exact full phrase.
-    if(keywords.length){
-      const filtered=list.filter(m=>{
-        const text=(m.title+' '+m.eventTitle+' '+(m.slug||'')).toLowerCase();
-        return keywords.some(k=>text.includes(k));
-      });
-      if(filtered.length) list=filtered;
-    }
-
-    polyMarkets=list
-      .filter(m=>m.yesToken && Number.isFinite(m.yes))
-      .sort((a,b)=>(b.volume||0)-(a.volume||0))
-      .slice(0,50);
-
-    document.getElementById('realMarketCount').textContent=polyMarkets.length;
-    renderRealMarkets();
-
-    if(polyMarkets.length){
-      setStatus('<b>'+polyMarkets.length+'</b> real markets loaded dari Polymarket Gamma API.');
-      setPolySignal(buildPolySignal(polyMarkets[0]));
-    }else{
-      setStatus('<span style="color:#fbbf24">0 market ditemukan. Kosongkan filter/search atau coba kata “btc”, “bitcoin”, “ethereum”, lalu Fetch lagi.</span>');
-    }
+    renderTable();
+    updateMetrics();
+    if(pairs.length) selectToken(pairs[0]);
+    setStatus(&#x27;&lt;b&gt;&#x27;+pairs.length+&#x27;&lt;/b&gt; SOL pairs loaded. Sinyal aktif sudah dibuat.&#x27;);
   }catch(e){
-    console.error(e);
-    setStatus('<span style="color:#f87171">gagal fetch Polymarket API: '+e.message+'. Kemungkinan CORS/rate-limit Cloudflare atau endpoint diblokir browser.</span>');
+    setStatus(&#x27;&lt;span style=&quot;color:#f87171&quot;&gt;Fetch gagal: &#x27;+e.message+&#x27;&lt;/span&gt;&#x27;);
   }
 }
 
-function extractMarketsFromMarkets(markets){
-  const out=[];
-  for(const m of markets){
-    if(m.closed || m.active===false) continue;
-    const outcomes=safeJson(m.outcomes,[]);
-    const prices=safeJson(m.outcomePrices,[]);
-    const tokenIds=safeJson(m.clobTokenIds || m.clobTokenIDs || m.clobTokenId,[]);
-    const yesIdx=outcomes.findIndex(o=>String(o).toLowerCase().includes('yes'));
-    const noIdx=outcomes.findIndex(o=>String(o).toLowerCase().includes('no'));
-    const y=yesIdx>=0?Number(prices[yesIdx]):Number(prices[0]);
-    const n=noIdx>=0?Number(prices[noIdx]):Number(prices[1] ?? (1-y));
-    const yToken=yesIdx>=0?tokenIds[yesIdx]:tokenIds[0];
-    const nToken=noIdx>=0?tokenIds[noIdx]:tokenIds[1];
-    if(!Number.isFinite(y) || !yToken) continue;
-    out.push({
-      id:m.id, slug:m.slug, title:m.question || m.title || 'Untitled market',
-      eventTitle:m.eventTitle || '', yes:y, no:Number.isFinite(n)?n:1-y,
-      volume:Number(m.volume || m.volumeNum || m.volume24hr || 0),
-      liquidity:Number(m.liquidity || m.liquidityNum || 0),
-      yesToken:yToken, noToken:nToken, endDate:m.endDate || ''
-    });
-  }
-  return out;
-}
-
-function getPolyModeParams(){
-  const mode=document.getElementById('polyMode')?.value||'Balanced AI';
-  const userTarget=Number(document.getElementById('polyTargetOdds')?.value||0.04);
-  const userStop=Number(document.getElementById('polyStopOdds')?.value||0.03);
-  const base={minConf:58,target:userTarget,stop:userStop};
-  if(mode==='Strict Quality')return{...base,minConf:65,target:Math.max(userTarget,0.05),stop:userStop};
-  if(mode==='Contrarian')return{...base,minConf:55,target:userTarget,stop:userStop,contrarian:true};
-  return base;
-}
-function buildPolySignal(m){
-  const params=getPolyModeParams();
-  let side=m.yes>=m.no?'YES':'NO';
-  if(params.contrarian && Math.max(m.yes,m.no)>0.75) side=side==='YES'?'NO':'YES';
-  const entry=side==='YES'?m.yes:m.no;
-  const volScore=Math.min(30,Math.log10(Math.max(1,m.volume))*4);
-  const liqScore=Math.min(25,Math.log10(Math.max(1,m.liquidity))*4);
-  let conf=Math.round(entry*55+volScore+liqScore);
-  conf=Math.max(45,Math.min(94,conf));
-  if(conf<params.minConf) return {...m,side:'WAIT',rawSide:null,entry:null,target:null,stop:null,conf,token:null};
-  const token=side==='YES'?m.yesToken:m.noToken;
-  return {...m,side:'BUY '+side,rawSide:side,entry,target:Math.min(.96,entry+params.target),stop:Math.max(.04,entry-params.stop),conf,token};
-}
-function renderRealMarkets(){
-  const el=document.getElementById('realMarketsTable');
-  el.innerHTML='<div class="row market-row head"><span>Market</span><span>YES</span><span>NO</span><span>Volume</span><span>Liquidity</span><span>AI Signal</span><span>Entry</span><span>Conf</span></div>';
-  polyMarkets.slice(0,30).forEach(m=>{
-    const s=buildPolySignal(m);
-    const row=document.createElement('div'); row.className='row market-row';
-    row.onclick=()=>setPolySignal(s);
-    row.style.cursor='pointer';
-    row.innerHTML=`<span>${m.title}</span><span class="good">${pct(m.yes)}</span><span class="bad">${pct(m.no)}</span><span>${money(m.volume)}</span><span>${money(m.liquidity)}</span><span class="${s.side.includes('YES')?'good':s.side.includes('NO')?'bad':'yellow'}">${s.side}</span><span>${s.entry?s.entry.toFixed(2):'--'}</span><span>${s.conf}%</span>`;
+function renderTable(){
+  const el=$(&#x27;scannerTable&#x27;);
+  el.innerHTML=&#x27;&lt;div class=&quot;row scanner-row head&quot;&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Price&lt;/span&gt;&lt;span&gt;Liq&lt;/span&gt;&lt;span&gt;Vol 24H&lt;/span&gt;&lt;span&gt;Age&lt;/span&gt;&lt;span&gt;MC&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;CA&lt;/span&gt;&lt;/div&gt;&#x27;;
+  pairs.forEach((p,i)=&gt;{
+    const a=p.ai, ca=caOf(p);
+    const row=document.createElement(&#x27;div&#x27;);
+    row.className=&#x27;row scanner-row&#x27;;
+    row.style.cursor=&#x27;pointer&#x27;;
+    row.onclick=()=&gt;selectToken(p);
+    row.innerHTML=`&lt;span&gt;${p.baseToken?.symbol||&#x27;--&#x27;} · ${p.baseToken?.name||&#x27;&#x27;}&lt;/span&gt;
+      &lt;span&gt;${price(p.priceUsd)}&lt;/span&gt;
+      &lt;span&gt;${money(a.liq)}&lt;/span&gt;
+      &lt;span&gt;${money(a.vol)}&lt;/span&gt;
+      &lt;span&gt;${ageText(a.age)}&lt;/span&gt;
+      &lt;span&gt;${money(a.mc)}&lt;/span&gt;
+      &lt;span&gt;&lt;span class=&quot;badge ${a.signal===&#x27;BUY&#x27;?&#x27;buy&#x27;:a.signal===&#x27;WATCH&#x27;?&#x27;watch&#x27;:&#x27;avoid&#x27;}&quot;&gt;${a.signal}&lt;/span&gt;&lt;/span&gt;
+      &lt;span&gt;${a.score}&lt;/span&gt;
+      &lt;span&gt;&lt;button class=&quot;copyBtn&quot; onclick=&quot;event.stopPropagation(); copyCA(&#x27;${ca}&#x27;)&quot;&gt;Copy CA&lt;/button&gt;&lt;/span&gt;`;
     el.appendChild(row);
   });
 }
-function setPolySignal(sig){
-  currentPoly=sig;
-  const action=document.getElementById('polyAction');
-  action.textContent=sig.side; action.className='action '+(sig.side.includes('YES')?'good':sig.side.includes('NO')?'bad':'yellow');
-  document.getElementById('polyScore').textContent='Confidence '+sig.conf+'%';
-  document.getElementById('polyMarket').textContent=sig.title || sig.market || '--';
-  document.getElementById('polyEntry').textContent=sig.entry?sig.entry.toFixed(2):'--';
-  document.getElementById('polyTarget').textContent=sig.target?sig.target.toFixed(2):'--';
-  document.getElementById('polyStop').textContent=sig.stop?sig.stop.toFixed(2):'--';
-  document.getElementById('polyReasonOdds').textContent='YES '+pct(sig.yes)+' / NO '+pct(sig.no);
-  document.getElementById('polyReasonVol').textContent=money(sig.volume);
-  document.getElementById('polyReasonLiq').textContent=money(sig.liquidity);
-  document.getElementById('polyReasonToken').textContent=sig.token?String(sig.token).slice(0,10)+'...':'--';
-  const log=document.getElementById('polyLiveLog');
-  const row=document.createElement('div');row.className='row log-row';
-  row.innerHTML=`<span>${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</span><span class="${sig.side.includes('YES')?'good':sig.side.includes('NO')?'bad':'yellow'}">${sig.side}</span><span>${sig.title}</span><span>${sig.entry?sig.entry.toFixed(2):'--'}</span><span>${sig.target?sig.target.toFixed(2):'--'}</span><span>${sig.conf}%</span>`;
-  log.insertBefore(row,log.children[1]||null);
-}
-async function scanPoly(){
-  if(!polyMarkets.length) await fetchRealPolyMarkets();
-  if(!polyMarkets.length) return;
-  let best=polyMarkets.map(buildPolySignal).sort((a,b)=>b.conf-a.conf)[0];
-  setPolySignal(best);
-}
-function openPolyCall(){
-  if(!currentPoly || currentPoly.side==='WAIT') return;
-  const table=document.getElementById('activeCalls');
-  const row=document.createElement('div'); row.className='row call-row';
-  row.innerHTML=`<span>Now</span><span class="${currentPoly.side.includes('YES')?'good':'bad'}">${currentPoly.side}</span><span>${currentPoly.title}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.target.toFixed(2)}</span><span><span class="badge open">OPEN</span></span><span class="yellow">$0</span>`;
-  table.appendChild(row);
-}
-async function fetchPriceHistory(token,startTs,endTs,interval){
-  const fidMap={ '1h':60, '6h':360, '1d':1440, '1w':10080 };
-  const fidelity=fidMap[interval] || 60;
 
-  async function tryUrl(url){
-    const res=await fetch(url);
-    if(!res.ok) throw new Error('history HTTP '+res.status);
-    const j=await res.json();
-    return (j.history||[]).map(x=>({t:Number(x.t)*1000,p:Number(x.p)})).filter(x=>Number.isFinite(x.p));
-  }
-
-  const tokenEnc=encodeURIComponent(token);
-  const urls=[
-    `https://clob.polymarket.com/prices-history?market=${tokenEnc}&startTs=${startTs}&endTs=${endTs}&interval=${interval}&fidelity=${fidelity}`,
-    `https://clob.polymarket.com/prices-history?market=${tokenEnc}&startTs=${startTs}&endTs=${endTs}&fidelity=${fidelity}`,
-    `https://clob.polymarket.com/prices-history?market=${tokenEnc}&interval=max&fidelity=${fidelity}`,
-    `https://clob.polymarket.com/prices-history?market=${tokenEnc}&interval=1m&fidelity=60`
-  ];
-
-  let lastErr=null;
-  for(const url of urls){
-    try{
-      const hist=await tryUrl(url);
-      if(hist.length>=2) return hist;
-    }catch(e){ lastErr=e; }
-  }
-  if(lastErr) console.warn('history fallback failed', lastErr);
-  return [];
+function updateMetrics(){
+  $(&#x27;mLoaded&#x27;).textContent=pairs.length;
+  $(&#x27;mBuy&#x27;).textContent=pairs.filter(p=&gt;p.ai.signal===&#x27;BUY&#x27;).length;
+  $(&#x27;mWatch&#x27;).textContent=pairs.filter(p=&gt;p.ai.signal===&#x27;WATCH&#x27;).length;
+  $(&#x27;mAvoid&#x27;).textContent=pairs.filter(p=&gt;p.ai.signal===&#x27;AVOID&#x27;).length;
+  $(&#x27;btBest&#x27;).textContent=pairs[0]?.baseToken?.symbol||&#x27;--&#x27;;
 }
 
-async function runPolyBacktest(){
-  if(!polyMarkets.length) await fetchRealPolyMarkets();
-  if(!polyMarkets.length) return;
+function selectToken(p){
+  selected=p;
+  const a=p.ai, ca=caOf(p), entry=Number(p.priceUsd);
+  const tp1=entry*(1+Number($(&#x27;tp1&#x27;).value||25)/100);
+  const tp2=entry*(1+Number($(&#x27;tp2&#x27;).value||60)/100);
+  const sl=entry*(1-Number($(&#x27;sl&#x27;).value||18)/100);
 
-  const bal0=Number(document.getElementById('polyBalance').value||1000);
-  const startDate=new Date(document.getElementById('polyFrom').value||'2025-01-01');
-  const userEndDate=new Date(document.getElementById('polyTo').value||new Date());
-  const now=new Date();
-  const effectiveEndDate=userEndDate>now ? now : userEndDate;
+  $(&#x27;signalAction&#x27;).textContent=a.signal;
+  $(&#x27;signalAction&#x27;).className=&#x27;action &#x27;+(a.signal===&#x27;BUY&#x27;?&#x27;good&#x27;:a.signal===&#x27;WATCH&#x27;?&#x27;yellow&#x27;:&#x27;bad&#x27;);
+  $(&#x27;signalToken&#x27;).textContent=(p.baseToken?.symbol||&#x27;--&#x27;)+&#x27; · &#x27;+(p.baseToken?.name||&#x27;&#x27;);
+  $(&#x27;signalDesc&#x27;).textContent=a.signal===&#x27;BUY&#x27;
+    ? &#x27;Token ini masuk kandidat BUY karena liquidity, volume, dan momentum cukup kuat.&#x27;
+    : a.signal===&#x27;WATCH&#x27;
+      ? &#x27;Token ini layak dipantau, tapi belum cukup kuat untuk entry besar.&#x27;
+      : &#x27;Token ini sebaiknya dihindari karena risk filter kurang aman.&#x27;;
+  $(&#x27;signalScore&#x27;).textContent=&#x27;Score &#x27;+a.score+&#x27;/100&#x27;;
+  $(&#x27;entry&#x27;).textContent=price(entry);
+  $(&#x27;tpLevels&#x27;).textContent=price(tp1)+&#x27; / &#x27;+price(tp2);
+  $(&#x27;slLevel&#x27;).textContent=price(sl);
+  $(&#x27;caShort&#x27;).textContent=ca?ca.slice(0,6)+&#x27;...&#x27;+ca.slice(-4):&#x27;--&#x27;;
 
-  if(startDate>=now){
-    setStatus('<span style="color:#fbbf24">Tanggal from berada di masa depan, jadi history real belum ada. Turunkan From Date.</span>');
-    return;
-  }
+  $(&#x27;rLiq&#x27;).textContent=money(a.liq);
+  $(&#x27;rLiqText&#x27;).textContent=a.liq&gt;=Number($(&#x27;minLiq&#x27;).value||10000)?&#x27;Liquidity cukup untuk entry kecil. Tetap cek slippage sebelum beli.&#x27;:&#x27;Liquidity tipis, rawan slippage dan rug.&#x27;;
+  $(&#x27;rVol&#x27;).textContent=money(a.vol);
+  $(&#x27;rVolText&#x27;).textContent=a.vol&gt;=Number($(&#x27;minVol&#x27;).value||50000)?&#x27;Volume 24H cukup aktif, ada minat pasar.&#x27;:&#x27;Volume masih rendah, sinyal belum kuat.&#x27;;
+  $(&#x27;rAge&#x27;).textContent=ageText(a.age)+&#x27; · &#x27;+(a.ch&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+a.ch.toFixed(1)+&#x27;%&#x27;;
+  $(&#x27;rAgeText&#x27;).textContent=a.age&lt;6?&#x27;Pair sangat baru, peluang cepat tapi risk rug tinggi.&#x27;:a.age&lt;96?&#x27;Pair masih dalam zona aktif untuk degen scanner.&#x27;:&#x27;Pair sudah cukup lama, momentum perlu divalidasi ulang.&#x27;;
+  $(&#x27;rRisk&#x27;).textContent=a.risk;
+  $(&#x27;rRisk&#x27;).className=a.risk===&#x27;MEDIUM&#x27;?&#x27;yellow&#x27;:&#x27;bad&#x27;;
+  $(&#x27;rRiskText&#x27;).textContent=&#x27;TX Buy/Sell: &#x27;+a.buys+&#x27;/&#x27;+a.sells+&#x27;. Catatan: &#x27;+(a.notes.join(&#x27;, &#x27;)||&#x27;normal&#x27;)+&#x27;.&#x27;;
+  setStatus(&#x27;Selected &#x27;+(p.baseToken?.symbol||&#x27;token&#x27;)+&#x27; · klik Copy CA untuk copy contract.&#x27;);
+}
 
-  const startTs=Math.floor(startDate.getTime()/1000);
-  const endTs=Math.floor(effectiveEndDate.getTime()/1000);
-  const interval=document.getElementById('polyInterval').value||'1h';
-  const params=getPolyModeParams();
+function generateActiveSignal(){
+  if(!pairs.length){fetchDex();return}
+  const buy=pairs.find(p=&gt;p.ai.signal===&#x27;BUY&#x27;) || pairs.find(p=&gt;p.ai.signal===&#x27;WATCH&#x27;) || pairs[0];
+  selectToken(buy);
+}
 
-  let balance=bal0, peak=bal0, maxDD=0, wins=0, losses=0, total=0, confSum=0;
-  let labels=['Start'], equity=[bal0], rows=[], byMonth={}, historiesChecked=0, historiesWithData=0;
+async function copyCA(ca){
+  try{await navigator.clipboard.writeText(ca);setStatus(&#x27;&lt;span style=&quot;color:#4ade80&quot;&gt;CA copied:&lt;/span&gt; &#x27;+ca.slice(0,8)+&#x27;...&#x27;+ca.slice(-4))}
+  catch(e){setStatus(&#x27;CA: &#x27;+ca)}
+}
+function copySelectedCA(){if(selected)copyCA(caOf(selected))}
+function openDex(){if(selected?.url)window.open(selected.url,&#x27;_blank&#x27;)}
 
-  setStatus('mengambil price history real dari CLOB...');
+function openPaperTrade(){
+  if(!selected){generateActiveSignal();return}
+  if(selected.ai.signal===&#x27;AVOID&#x27;){setStatus(&#x27;Token AVOID, paper trade tidak dibuka. Pilih token lain.&#x27;);return}
+  const entry=Number(selected.priceUsd);
+  const tp=entry*(1+Number($(&#x27;tp1&#x27;).value||25)/100);
+  const sl=entry*(1-Number($(&#x27;sl&#x27;).value||18)/100);
+  const row=document.createElement(&#x27;div&#x27;);
+  row.className=&#x27;row history-row&#x27;;
+  row.innerHTML=`&lt;span&gt;Now&lt;/span&gt;&lt;span&gt;${selected.baseToken?.symbol||&#x27;--&#x27;}&lt;/span&gt;&lt;span&gt;${price(entry)}&lt;/span&gt;&lt;span&gt;${price(tp)}&lt;/span&gt;&lt;span&gt;${price(sl)}&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;badge buy&quot;&gt;OPEN&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;yellow&quot;&gt;$0&lt;/span&gt;`;
+  $(&#x27;activeTable&#x27;).appendChild(row);
+  setStatus(&#x27;Paper trade opened: &#x27;+(selected.baseToken?.symbol||&#x27;token&#x27;));
+}
 
-  // Use more candidates and do not drop WAIT markets for history test.
-  const candidates=polyMarkets
-    .map(m=>buildPolySignal(m))
-    .filter(s=>s.token || s.yesToken || s.noToken)
-    .sort((a,b)=>(b.conf||0)-(a.conf||0))
-    .slice(0,18);
+function runBacktest(){
+  if(!pairs.length){setStatus(&#x27;Fetch DexScreener dulu.&#x27;);return}
+  const bal0=Number($(&#x27;paperBalInput&#x27;).value||1000), stakePct=Number($(&#x27;stakePct&#x27;).value||8)/100;
+  const tp=Number($(&#x27;tp1&#x27;).value||25)/100, sl=Number($(&#x27;sl&#x27;).value||18)/100;
+  let bal=bal0,w=0,l=0,pnlAll=0,trades=0;
+  labels=[&#x27;Start&#x27;];equity=[bal0];
+  $(&#x27;historyTable&#x27;).innerHTML=&#x27;&lt;div class=&quot;row history-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Entry&lt;/span&gt;&lt;span&gt;Exit&lt;/span&gt;&lt;span&gt;Result&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;span&gt;PnL&lt;/span&gt;&lt;/div&gt;&#x27;;
 
-  for(const sig0 of candidates){
-    let sig=sig0;
-    // If AI says WAIT, still pick the stronger side for backtest history availability,
-    // but keep confidence low so it is visible in results.
-    if(sig.side==='WAIT'){
-      const rawSide=(sig.yes||0)>=(sig.no||0)?'YES':'NO';
-      const entry=rawSide==='YES'?sig.yes:sig.no;
-      sig={...sig,side:'BUY '+rawSide,rawSide,entry,target:Math.min(.96,entry+params.target),stop:Math.max(.04,entry-params.stop),token:rawSide==='YES'?sig.yesToken:sig.noToken};
-    }
-
-    const token=sig.token || (sig.rawSide==='YES'?sig.yesToken:sig.noToken);
-    if(!token) continue;
-
-    historiesChecked++;
-    const hist=await fetchPriceHistory(token,startTs,endTs,interval);
-    if(hist.length<2) continue;
-    historiesWithData++;
-
-    // Simulate multiple calls from real historical prices.
-    const step=Math.max(2,Math.floor(hist.length/8));
-    for(let i=0;i<hist.length-2;i+=step){
-      const entry=hist[i].p;
-      const target=Math.min(.96,entry+params.target);
-      const stop=Math.max(.04,entry-params.stop);
-      const stake=Math.max(5,balance*(Number(document.getElementById('polyStakePct')?.value||12)/100));
-      let exit=hist[Math.min(hist.length-1,i+step)].p;
-      let result=null, closeIndex=Math.min(hist.length-1,i+step);
-
-      for(let j=i+1;j<hist.length && j<=i+step*2;j++){
-        if(hist[j].p>=target){ exit=hist[j].p; result='WIN'; closeIndex=j; break; }
-        if(hist[j].p<=stop){ exit=hist[j].p; result='LOSS'; closeIndex=j; break; }
-      }
-      if(!result) result=exit>=entry?'WIN':'LOSS';
-
-      const pnl=result==='WIN'
-        ? stake*(exit-entry)/Math.max(.05,entry)
-        : -stake*(entry-exit)/Math.max(.05,entry);
-
-      balance+=pnl;
-      if(result==='WIN') wins++; else losses++;
-      total++; confSum+=sig.conf||60;
-
-      peak=Math.max(peak,balance);
-      maxDD=Math.max(maxDD,(peak-balance)/peak*100);
-
-      const dt=new Date(hist[closeIndex].t);
-      const mk=dt.toLocaleDateString('id-ID',{month:'short',year:'2-digit'});
-      byMonth[mk]=(byMonth[mk]||0)+pnl;
-      labels.push(dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}));
-      equity.push(Number(balance.toFixed(2)));
-      rows.push({date:dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}),side:sig.side,market:sig.title,entry,exit,result,pnl});
-    }
-  }
-
-  document.getElementById('polyBal').textContent=money(balance);
-  document.getElementById('polyProfit').textContent=(balance-bal0>=0?'+':'')+money(balance-bal0);
-  document.getElementById('polyProfit').className=balance>=bal0?'good':'bad';
-  document.getElementById('polyWR').textContent=total?(wins/total*100).toFixed(1)+'%':'--%';
-  document.getElementById('polyTotalCalls').textContent=total;
-  document.getElementById('polyClosedCalls').textContent=wins+losses;
-  document.getElementById('polyAvgConf').textContent=total?(confSum/total).toFixed(0)+'%':'--%';
-  document.getElementById('polyDD').textContent=maxDD.toFixed(1)+'%';
-
-  const months=Object.entries(byMonth).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('polyBestMonth').textContent=months[0]?.[0]||'--';
-  document.getElementById('polyWorstMonth').textContent=months[months.length-1]?.[0]||'--';
-
-  const histEl=document.getElementById('polyHistory');
-  histEl.innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
-  rows.slice(-80).reverse().forEach(r=>{
-    const row=document.createElement('div');row.className='row hist-row';
-    row.innerHTML=`<span>${r.date}</span><span class="${r.side.includes('YES')?'good':'bad'}">${r.side}</span><span>${r.market}</span><span>${r.entry.toFixed(2)}</span><span>${r.exit.toFixed(2)}</span><span><span class="badge ${r.result==='WIN'?'win':'loss'}">${r.result}</span></span><span class="${r.pnl>=0?'good':'bad'}">${r.pnl>=0?'+':''}${money(r.pnl)}</span>`;
-    histEl.appendChild(row);
+  pairs.filter(p=&gt;p.ai.signal!==&#x27;AVOID&#x27;).slice(0,30).forEach((p,i)=&gt;{
+    const a=p.ai, entry=Number(p.priceUsd), change=Number(p.priceChange?.h24||0)/100;
+    const win=a.score&gt;=68 || change&gt;tp;
+    const exit=win?entry*(1+Math.min(Math.max(Math.abs(change),0.08),tp)):entry*(1-sl);
+    const stake=Math.max(5,bal*stakePct);
+    const pnl=win?stake*((exit-entry)/entry):-stake*sl;
+    bal+=pnl;pnlAll+=pnl;trades++;if(win)w++;else l++;
+    labels.push(p.baseToken?.symbol||String(i+1));equity.push(Number(bal.toFixed(2)));
+    const row=document.createElement(&#x27;div&#x27;);row.className=&#x27;row history-row&#x27;;
+    row.innerHTML=`&lt;span&gt;${i+1}&lt;/span&gt;&lt;span&gt;${p.baseToken?.symbol||&#x27;--&#x27;}&lt;/span&gt;&lt;span&gt;${price(entry)}&lt;/span&gt;&lt;span&gt;${price(exit)}&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;badge ${win?&#x27;buy&#x27;:&#x27;avoid&#x27;}&quot;&gt;${win?&#x27;WIN&#x27;:&#x27;LOSS&#x27;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;${a.signal}&lt;/span&gt;&lt;span class=&quot;${pnl&gt;=0?&#x27;good&#x27;:&#x27;bad&#x27;}&quot;&gt;${pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;}${money(pnl)}&lt;/span&gt;`;
+    $(&#x27;historyTable&#x27;).appendChild(row);
   });
 
-  polyEquityLabels=labels; polyEquityData=equity; renderPolyChart();
-
-  if(total===0){
-    setStatus('<span style="color:#fbbf24">history dicek: '+historiesChecked+' token, yang punya data: '+historiesWithData+', tetapi belum ada call terbentuk. Coba kosongkan Market Filter atau pakai From Date lebih lama.</span>');
-  }else{
-    setStatus('backtest selesai memakai real CLOB price history. Histories with data: <b>'+historiesWithData+'</b> · Calls: <b>'+total+'</b>');
-  }
+  $(&#x27;paperBal&#x27;).textContent=money(bal);
+  $(&#x27;btTrades&#x27;).textContent=trades;
+  $(&#x27;btWR&#x27;).textContent=trades?(w/trades*100).toFixed(1)+&#x27;%&#x27;:&#x27;--%&#x27;;
+  $(&#x27;btProfit&#x27;).textContent=(pnlAll&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+money(pnlAll);
+  $(&#x27;btProfit&#x27;).className=pnlAll&gt;=0?&#x27;good&#x27;:&#x27;bad&#x27;;
+  renderChart();
+  setStatus(&#x27;Paper backtest selesai. Trades: &#x27;+trades);
 }
 
-function clearHistory(){
-  document.getElementById('polyHistory').innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';
+function renderChart(){
+  const ctx=$(&#x27;equityChart&#x27;); if(!ctx)return;
+  if(chart)chart.destroy();
+  chart=new Chart(ctx,{type:&#x27;line&#x27;,data:{labels,datasets:[{data:equity,borderColor:&#x27;#4ade80&#x27;,backgroundColor:&#x27;rgba(74,222,128,.14)&#x27;,fill:true,tension:.35,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:&#x27;#94a3b8&#x27;,maxTicksLimit:8},grid:{color:&#x27;rgba(255,255,255,.05)&#x27;}},y:{ticks:{color:&#x27;#94a3b8&#x27;},grid:{color:&#x27;rgba(255,255,255,.05)&#x27;}}}}});
 }
-function renderPolyChart(){
-  const ctx=document.getElementById('polyChart'); if(!ctx||!window.Chart)return;
-  if(polyChart)polyChart.destroy();
-  polyChart=new Chart(ctx,{type:'line',data:{labels:polyEquityLabels,datasets:[{data:polyEquityData,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.14)',fill:true,tension:.35,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#94a3b8',maxTicksLimit:10},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}}}}});
-}
-window.addEventListener('load',()=>{resizeTradeFrame();renderPolyChart();});
-</script>
+
+function startAuto(){stopAuto();fetchDex();timer=setInterval(fetchDex,Number($(&#x27;refreshSec&#x27;).value||30)*1000);setStatus(&#x27;auto refresh started&#x27;)}
+function stopAuto(){if(timer)clearInterval(timer);timer=null;setStatus(&#x27;auto refresh stopped&#x27;)}
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+" onload="resizeFrame('solFrame')"></iframe></div></section>
+</div>
 
 <script>
-window.addEventListener('load', function(){
-  setTimeout(function(){
-    var info = document.getElementById('live2ChartInfo');
-    if(info && info.innerText && info.innerText.toLowerCase().includes('dummy')){
-      info.innerHTML = 'Binance Futures API gagal diakses<br>Tidak menampilkan data dummy';
-    }
-  }, 1000);
-});
-</script>
+function showMainTab(id,el){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active');setTimeout(()=>resizeFrame(id==='trade'?'tradeFrame':id==='sol'?'solFrame':null),150);if(id==='poly')renderPolyChart();if(id==='forex')updateForexChart()}
+function resizeFrame(id){if(!id)return;const frame=document.getElementById(id);try{const doc=frame.contentWindow.document;frame.style.height=(Math.max(1800,doc.documentElement.scrollHeight,doc.body.scrollHeight)+40)+'px'}catch(e){frame.style.height='2400px'}}
+setInterval(()=>{if(document.getElementById('trade').classList.contains('active'))resizeFrame('tradeFrame');if(document.getElementById('sol').classList.contains('active'))resizeFrame('solFrame')},1500)
 
+let polyMarkets=[],currentPoly=null,polyChart=null,polyLabels=['Start'],polyEquity=[1000];
+function money(v){return '$'+Number(v||0).toLocaleString('en-US',{maximumFractionDigits:0})}
+function pct(v){return (Number(v||0)*100).toFixed(0)+'%'}
+function safeJson(x,f=[]){try{return typeof x==='string'?JSON.parse(x):x||f}catch(e){return f}}
+function setPolyStatus(t){document.getElementById('polyStatus').innerHTML='Status: '+t}
+function extractMarketsFromEvents(events){const out=[];for(const ev of events){for(const m of ev.markets||[]){if(m.closed||m.active===false)continue;const outcomes=safeJson(m.outcomes,[]),prices=safeJson(m.outcomePrices,[]),tokens=safeJson(m.clobTokenIds||m.clobTokenIDs||m.clobTokenId,[]);const yi=outcomes.findIndex(o=>String(o).toLowerCase().includes('yes'));const ni=outcomes.findIndex(o=>String(o).toLowerCase().includes('no'));const y=yi>=0?+prices[yi]:+prices[0];const n=ni>=0?+prices[ni]:+(prices[1]??(1-y));const yt=yi>=0?tokens[yi]:tokens[0];const nt=ni>=0?tokens[ni]:tokens[1];if(Number.isFinite(y)&&yt)out.push({title:m.question||m.title||ev.title,yes:y,no:Number.isFinite(n)?n:1-y,volume:+(m.volume||m.volumeNum||ev.volume||0),liquidity:+(m.liquidity||m.liquidityNum||0),yesToken:yt,noToken:nt})}}return out}
+async function fetchRealPolyMarkets(){const q=(document.getElementById('polySearch').value||'').toLowerCase().split(/\s+/).filter(Boolean);setPolyStatus('fetching real Polymarket...');try{const res=await fetch('https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume&ascending=false&limit=100');if(!res.ok)throw new Error(res.status);const events=await res.json();let list=extractMarketsFromEvents(Array.isArray(events)?events:(events.data||[]));if(q.length){let f=list.filter(m=>q.some(k=>m.title.toLowerCase().includes(k)));if(f.length)list=f}polyMarkets=list.slice(0,50);document.getElementById('realMarketCount').textContent=polyMarkets.length;renderRealMarkets();setPolyStatus('<b>'+polyMarkets.length+'</b> real markets loaded');if(polyMarkets.length)setPolySignal(buildPolySignal(polyMarkets[0]))}catch(e){setPolyStatus('<span style="color:#f87171">Gagal fetch Poly: '+e.message+'</span>')}}
+function buildPolySignal(m){let side=m.yes>=m.no?'YES':'NO';let entry=side==='YES'?m.yes:m.no;let target=Math.min(.96,entry+Number(document.getElementById('polyTargetOdds').value||.04));let stop=Math.max(.04,entry-Number(document.getElementById('polyStopOdds').value||.03));let conf=Math.min(94,Math.max(45,Math.round(entry*60+Math.log10(Math.max(1,m.volume))*5)));return{...m,side:'BUY '+side,entry,target,stop,conf,token:side==='YES'?m.yesToken:m.noToken}}
+function renderRealMarkets(){let el=document.getElementById('realMarketsTable');el.innerHTML='<div class="row market-row head"><span>Market</span><span>YES</span><span>NO</span><span>Volume</span><span>Liquidity</span><span>AI Signal</span><span>Entry</span><span>Conf</span></div>';polyMarkets.forEach(m=>{let s=buildPolySignal(m);let r=document.createElement('div');r.className='row market-row';r.style.cursor='pointer';r.onclick=()=>setPolySignal(s);r.innerHTML=`<span>${m.title}</span><span class="good">${pct(m.yes)}</span><span class="bad">${pct(m.no)}</span><span>${money(m.volume)}</span><span>${money(m.liquidity)}</span><span class="${s.side.includes('YES')?'good':'bad'}">${s.side}</span><span>${s.entry.toFixed(2)}</span><span>${s.conf}%</span>`;el.appendChild(r)})}
+async function scanPoly(){if(!polyMarkets.length)await fetchRealPolyMarkets();if(!polyMarkets.length)return;setPolySignal(polyMarkets.map(buildPolySignal).sort((a,b)=>b.conf-a.conf)[0])}
+function setPolySignal(s){currentPoly=s;document.getElementById('polyAction').textContent=s.side;document.getElementById('polyAction').className='action '+(s.side.includes('YES')?'good':'bad');document.getElementById('polyScore').textContent='Confidence '+s.conf+'%';document.getElementById('polyMarket').textContent=s.title;document.getElementById('polyEntry').textContent=s.entry.toFixed(2);document.getElementById('polyTarget').textContent=s.target.toFixed(2);document.getElementById('polyStop').textContent=s.stop.toFixed(2);document.getElementById('polyReasonOdds').textContent='YES '+pct(s.yes)+' / NO '+pct(s.no);document.getElementById('polyReasonVol').textContent=money(s.volume);document.getElementById('polyReasonLiq').textContent=money(s.liquidity);document.getElementById('polyReasonToken').textContent=String(s.token||'').slice(0,10)+'...';let log=document.getElementById('polyLiveLog');let r=document.createElement('div');r.className='row log-row';r.innerHTML=`<span>${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</span><span class="${s.side.includes('YES')?'good':'bad'}">${s.side}</span><span>${s.title}</span><span>${s.entry.toFixed(2)}</span><span>${s.target.toFixed(2)}</span><span>${s.conf}%</span>`;log.insertBefore(r,log.children[1]||null)}
+function openPolyCall(){if(!currentPoly)return;let t=document.getElementById('activeCalls');let r=document.createElement('div');r.className='row call-row';r.innerHTML=`<span>Now</span><span class="${currentPoly.side.includes('YES')?'good':'bad'}">${currentPoly.side}</span><span>${currentPoly.title}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.entry.toFixed(2)}</span><span>${currentPoly.target.toFixed(2)}</span><span><span class="badge open">OPEN</span></span><span class="yellow">$0</span>`;t.appendChild(r);document.getElementById('activeCount').textContent=Number(document.getElementById('activeCount').textContent)+1}
+function runPolyBacktest(){if(!polyMarkets.length){setPolyStatus('Fetch markets dulu.');return}let bal0=Number(document.getElementById('polyBalance').value||1000),bal=bal0,w=0,l=0;polyLabels=['Start'];polyEquity=[bal];let hist=document.getElementById('polyHistory');hist.innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>';polyMarkets.map(buildPolySignal).slice(0,25).forEach((s,i)=>{let win=s.conf>66;let stake=bal*(Number(document.getElementById('polyStakePct').value||12)/100);let exit=win?s.target:s.stop;let pnl=win?stake*((exit-s.entry)/Math.max(.05,s.entry)):-stake*((s.entry-exit)/Math.max(.05,s.entry));bal+=pnl;if(win)w++;else l++;polyLabels.push(String(i+1));polyEquity.push(Number(bal.toFixed(2)));let r=document.createElement('div');r.className='row hist-row';r.innerHTML=`<span>${i+1}</span><span class="${s.side.includes('YES')?'good':'bad'}">${s.side}</span><span>${s.title}</span><span>${s.entry.toFixed(2)}</span><span>${exit.toFixed(2)}</span><span><span class="badge ${win?'win':'loss'}">${win?'WIN':'LOSS'}</span></span><span class="${pnl>=0?'good':'bad'}">${pnl>=0?'+':''}${money(pnl)}</span>`;hist.appendChild(r)});let profit=bal-bal0;document.getElementById('polyBal').textContent=money(bal);document.getElementById('polyProfit').textContent=(profit>=0?'+':'')+money(profit);document.getElementById('polyProfit').className=profit>=0?'good':'bad';document.getElementById('polyWR').textContent=(w/(w+l)*100).toFixed(1)+'%';renderPolyChart();setPolyStatus('paper backtest selesai')}
+function clearHistory(){document.getElementById('polyHistory').innerHTML='<div class="row hist-row head"><span>Date</span><span>Side</span><span>Market</span><span>Entry</span><span>Exit</span><span>Result</span><span>PnL</span></div>'}
+function renderPolyChart(){const ctx=document.getElementById('polyChart');if(!ctx||!window.Chart)return;if(polyChart)polyChart.destroy();polyChart=new Chart(ctx,{type:'line',data:{labels:polyLabels,datasets:[{data:polyEquity,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.14)',fill:true,tension:.35,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,.05)'}}}}})}
+window.addEventListener('load',()=>{resizeFrame('tradeFrame');renderPolyChart()})
+</script>
 </body>
 </html>
