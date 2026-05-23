@@ -401,7 +401,7 @@ h1{font-size:22px}.sub{font-size:12px;color:var(--muted);margin-top:4px}.pill{fo
   <div class="tabs">
     <div class="tab active" onclick="showMainTab('trade',this)"><b>Trade Future</b><span>Fitur futures lengkap yang sudah dibangun</span></div>
     <div class="tab" onclick="showMainTab('poly',this)"><b>Poly</b><span>Real Polymarket API + AI calls</span></div>
-    <div class="tab" onclick="showMainTab('sol',this)"><b>SOL Degen</b><span>DexScreener + AI token research</span></div>
+    <div class="tab" onclick="showMainTab('sol',this)"><b>SOL Degen</b><span>DexScreener + Ponyin-style early SOL signals</span></div>
     <div class="tab" onclick="showMainTab('forex',this)"><b>XAUUSD</b><span>Gold signal + backtest</span></div>
     <div class="tab" onclick="showMainTab('eaBoys',this)"><b>EA Boys V8</b><span>Logic MQ5 jadi AI signal</span></div>
   </div>
@@ -2380,98 +2380,57 @@ setLiveButtons(false);
 &lt;head&gt;
 &lt;meta charset=&quot;UTF-8&quot;&gt;
 &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1.0&quot;&gt;
-&lt;title&gt;SOL Degen Active Signal Dashboard&lt;/title&gt;
+&lt;title&gt;SOL Degen Active Signal v2&lt;/title&gt;
 &lt;script src=&quot;https://cdn.jsdelivr.net/npm/chart.js&quot;&gt;&lt;/script&gt;
 &lt;style&gt;
-:root{
-  --bg:#070b12;--card:#0f172a;--card2:#111827;--line:#26354d;
-  --text:#f8fafc;--muted:#94a3b8;--green:#4ade80;--red:#f87171;
-  --yellow:#fbbf24;--blue:#60a5fa;--purple:#a78bfa
-}
+:root{--bg:#070b12;--card:#0f172a;--card2:#111827;--line:#26354d;--text:#f8fafc;--muted:#94a3b8;--green:#4ade80;--red:#f87171;--yellow:#fbbf24;--blue:#60a5fa;--purple:#a78bfa}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Arial,sans-serif}
 .container{max-width:1280px;margin:auto;padding:22px}
 .header{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}
 .logo{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,#9945ff,#14f195);display:flex;align-items:center;justify-content:center;font-weight:1000;font-size:22px}
-.brand{display:flex;gap:12px;align-items:center}
-h1{font-size:24px}.sub{font-size:12px;color:var(--muted);margin-top:4px}
+.brand{display:flex;gap:12px;align-items:center}h1{font-size:24px}.sub{font-size:12px;color:var(--muted);margin-top:4px}
 .pill{border:1px solid #14f19566;background:#14f19514;color:#4ade80;border-radius:999px;padding:8px 12px;font-weight:900;font-size:11px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
 .card-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:900;margin-bottom:12px}
 .controls{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px}
 label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px}
 input,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0b1120;color:white}
-button{cursor:pointer;background:#2563eb;border-color:#2563eb;font-weight:900}
-.btns{display:flex;gap:8px;flex-wrap:wrap}.btns button{width:auto}
+button{cursor:pointer;background:#2563eb;border-color:#2563eb;font-weight:900}.btns{display:flex;gap:8px;flex-wrap:wrap}.btns button{width:auto}
 .greenBtn{background:#166534;border-color:#15803d}.redBtn{background:#7f1d1d;border-color:#991b1b}.darkBtn{background:#0b1120;border-color:#334155}
-.grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.metric{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:13px}
-.metric small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:6px}
-.metric b{font-size:20px}.metric span{display:block;color:#64748b;font-size:10px;margin-top:4px}
+.grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.metric{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:13px}.metric small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:6px}.metric b{font-size:20px}.metric span{display:block;color:#64748b;font-size:10px;margin-top:4px}
 .good{color:var(--green)!important}.bad{color:var(--red)!important}.yellow{color:var(--yellow)!important}.blue{color:var(--blue)!important}.purple{color:var(--purple)!important}
-.signal-main{background:linear-gradient(180deg,#111827,#0b1120);border:1px solid #334155;border-radius:18px;padding:18px}
-.signal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
-.action{font-size:38px;font-weight:1000}
-.score{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px 14px;font-weight:900;color:#cbd5e1}
-.token-title{font-size:22px;font-weight:1000;margin-top:4px}
-.token-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
-.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
-.level{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:12px}
-.level small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;margin-bottom:6px}
-.level b{font-size:15px;word-break:break-word}
-.research{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.research-box{background:#111827;border:1px solid #334155;border-radius:14px;padding:13px}
-.research-box small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:7px}
-.research-box b{font-size:15px}.research-box p{font-size:12px;color:#cbd5e1;line-height:1.5;margin-top:6px}
-.table{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0b1120}
-.row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #1f2a3d;font-size:11px;align-items:center}
-.row:last-child{border-bottom:none}
-.head{background:#111827;color:var(--muted);text-transform:uppercase;font-weight:900;font-size:10px}
-.scanner-row{grid-template-columns:1.15fr 90px 85px 85px 70px 90px 90px 70px 120px}
-.history-row{grid-template-columns:70px 1fr 90px 90px 90px 85px 80px}
+.signal-main{background:linear-gradient(180deg,#111827,#0b1120);border:1px solid #334155;border-radius:18px;padding:18px}.signal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+.action{font-size:38px;font-weight:1000}.score{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px 14px;font-weight:900;color:#cbd5e1}
+.token-title{font-size:22px;font-weight:1000;margin-top:4px}.token-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}.level{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:12px}.level small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;margin-bottom:6px}.level b{font-size:15px;word-break:break-word}
+.research{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.research-box{background:#111827;border:1px solid #334155;border-radius:14px;padding:13px}.research-box small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:7px}.research-box b{font-size:15px}.research-box p{font-size:12px;color:#cbd5e1;line-height:1.5;margin-top:6px}
+.table{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0b1120}.row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #1f2a3d;font-size:11px;align-items:center}.row:last-child{border-bottom:none}.head{background:#111827;color:var(--muted);text-transform:uppercase;font-weight:900;font-size:10px}
+.scanner-row{grid-template-columns:1.05fr 80px 80px 80px 70px 70px 95px 65px 110px}.signal-row{grid-template-columns:45px 1fr 80px 80px 65px 90px 100px}.history-row{grid-template-columns:70px 1fr 90px 90px 90px 85px 80px}
 .copyBtn{padding:6px 10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:white;font-size:10px}
-.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}
-.buy{background:#16a34a22;color:#4ade80;border:1px solid #16a34a66}
-.watch{background:#d9770622;color:#fbbf24;border:1px solid #d9770666}
-.avoid{background:#dc262622;color:#f87171;border:1px solid #dc262666}
-.note{font-size:10px;color:#64748b;line-height:1.6;margin-top:10px}
-.chartbox{height:260px;background:#070b12;border:1px solid var(--line);border-radius:14px;padding:10px}
-.status{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}
-@media(max-width:950px){
-  .grid2,.grid4,.grid5,.controls,.levels,.research{grid-template-columns:1fr 1fr}
-  .scanner-row,.history-row{grid-template-columns:80px 1fr 80px 80px}
-  .scanner-row span:nth-child(n+5),.history-row span:nth-child(n+5){display:none}
-}
-@media(max-width:600px){
-  .grid2,.grid4,.grid5,.controls,.levels,.research{grid-template-columns:1fr}
-  .header{flex-direction:column;align-items:flex-start}
-}
+.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.buy{background:#16a34a22;color:#4ade80;border:1px solid #16a34a66}.watch{background:#d9770622;color:#fbbf24;border:1px solid #d9770666}.avoid{background:#dc262622;color:#f87171;border:1px solid #dc262666}.frozen{background:#64748b22;color:#94a3b8;border:1px solid #64748b66}
+.note{font-size:10px;color:#64748b;line-height:1.6;margin-top:10px}.chartbox{height:260px;background:#070b12;border:1px solid var(--line);border-radius:14px;padding:10px}.status{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}
+@media(max-width:950px){.grid2,.grid4,.grid5,.controls,.levels,.research{grid-template-columns:1fr 1fr}.scanner-row,.history-row,.signal-row{grid-template-columns:80px 1fr 80px 80px}.scanner-row span:nth-child(n+5),.history-row span:nth-child(n+5),.signal-row span:nth-child(n+5){display:none}}
+@media(max-width:600px){.grid2,.grid4,.grid5,.controls,.levels,.research{grid-template-columns:1fr}.header{flex-direction:column;align-items:flex-start}}
 &lt;/style&gt;
 &lt;/head&gt;
 &lt;body&gt;
 &lt;div class=&quot;container&quot;&gt;
   &lt;div class=&quot;header&quot;&gt;
-    &lt;div class=&quot;brand&quot;&gt;
-      &lt;div class=&quot;logo&quot;&gt;S&lt;/div&gt;
-      &lt;div&gt;
-        &lt;h1&gt;SOL Degen Active Signal&lt;/h1&gt;
-        &lt;div class=&quot;sub&quot;&gt;DexScreener Real API · AI Meme Coin Research · Copy CA · Paper Trade&lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
-    &lt;div class=&quot;pill&quot;&gt;SOL DEGEN MODE&lt;/div&gt;
+    &lt;div class=&quot;brand&quot;&gt;&lt;div class=&quot;logo&quot;&gt;S&lt;/div&gt;&lt;div&gt;&lt;h1&gt;SOL Degen Active Signal v2&lt;/h1&gt;&lt;div class=&quot;sub&quot;&gt;Ponyin-style early intel · DexScreener real API · GMGN/Dex links · Copy CA&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;pill&quot;&gt;PONYIN-STYLE EARLY MODE&lt;/div&gt;
   &lt;/div&gt;
 
   &lt;div class=&quot;card&quot;&gt;
     &lt;div class=&quot;card-title&quot;&gt;Scanner Controls&lt;/div&gt;
     &lt;div class=&quot;controls&quot;&gt;
-      &lt;div&gt;&lt;label&gt;Search&lt;/label&gt;&lt;input id=&quot;solSearch&quot; value=&quot;solana&quot; placeholder=&quot;solana, bonk, pump...&quot;&gt;&lt;/div&gt;
-      &lt;div&gt;&lt;label&gt;Min Liquidity&lt;/label&gt;&lt;input id=&quot;minLiq&quot; value=&quot;10000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
-      &lt;div&gt;&lt;label&gt;Min Volume 24H&lt;/label&gt;&lt;input id=&quot;minVol&quot; value=&quot;50000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
-      &lt;div&gt;&lt;label&gt;Max Age Hours&lt;/label&gt;&lt;input id=&quot;maxAge&quot; value=&quot;96&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
-      &lt;div&gt;&lt;label&gt;Stake %&lt;/label&gt;&lt;input id=&quot;stakePct&quot; value=&quot;8&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
-      &lt;div&gt;&lt;label&gt;Mode&lt;/label&gt;&lt;select id=&quot;mode&quot;&gt;&lt;option&gt;Balanced&lt;/option&gt;&lt;option&gt;Strict Safety&lt;/option&gt;&lt;option&gt;High Degen&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Search&lt;/label&gt;&lt;input id=&quot;solSearch&quot; value=&quot;solana meme pump bonk&quot; placeholder=&quot;solana, meme, pump...&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Min Liquidity&lt;/label&gt;&lt;input id=&quot;minLiq&quot; value=&quot;5000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Min Vol 24H&lt;/label&gt;&lt;input id=&quot;minVol&quot; value=&quot;15000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Min Vol 1H&lt;/label&gt;&lt;input id=&quot;minVol1h&quot; value=&quot;1000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Min TX 5m&lt;/label&gt;&lt;input id=&quot;minTx5m&quot; value=&quot;1&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Max Age Hours&lt;/label&gt;&lt;input id=&quot;maxAge&quot; value=&quot;24&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
     &lt;/div&gt;
     &lt;div class=&quot;controls&quot;&gt;
       &lt;div&gt;&lt;label&gt;TP1 %&lt;/label&gt;&lt;input id=&quot;tp1&quot; value=&quot;25&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
@@ -2479,61 +2438,74 @@ button{cursor:pointer;background:#2563eb;border-color:#2563eb;font-weight:900}
       &lt;div&gt;&lt;label&gt;SL %&lt;/label&gt;&lt;input id=&quot;sl&quot; value=&quot;18&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
       &lt;div&gt;&lt;label&gt;Paper Balance&lt;/label&gt;&lt;input id=&quot;paperBalInput&quot; value=&quot;1000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
       &lt;div&gt;&lt;label&gt;Auto Refresh&lt;/label&gt;&lt;select id=&quot;refreshSec&quot;&gt;&lt;option value=&quot;15&quot;&gt;15s&lt;/option&gt;&lt;option value=&quot;30&quot; selected&gt;30s&lt;/option&gt;&lt;option value=&quot;60&quot;&gt;60s&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
-      &lt;div&gt;&lt;label&gt;Status&lt;/label&gt;&lt;input id=&quot;statusBox&quot; value=&quot;READY&quot; readonly&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Mode&lt;/label&gt;&lt;select id=&quot;mode&quot;&gt;&lt;option&gt;Balanced&lt;/option&gt;&lt;option&gt;Strict Anti-Rug&lt;/option&gt;&lt;option&gt;High Degen&lt;/option&gt;&lt;option&gt;Low MC Hunter&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
     &lt;/div&gt;
     &lt;div class=&quot;btns&quot;&gt;
       &lt;button onclick=&quot;fetchDex()&quot;&gt;Fetch DexScreener&lt;/button&gt;
-      &lt;button class=&quot;greenBtn&quot; onclick=&quot;generateActiveSignal()&quot;&gt;Generate Active Signal&lt;/button&gt;
+      &lt;button class=&quot;greenBtn&quot; onclick=&quot;generateActiveSignal()&quot;&gt;Generate Best BUY Signal&lt;/button&gt;
+      &lt;button class=&quot;darkBtn&quot; onclick=&quot;generateNextSignal()&quot;&gt;Next Signal&lt;/button&gt;
+      &lt;button class=&quot;darkBtn&quot; onclick=&quot;generateLowMCSignal()&quot;&gt;Low MC Hunter&lt;/button&gt;
       &lt;button onclick=&quot;openPaperTrade()&quot;&gt;Open Paper Trade&lt;/button&gt;
       &lt;button onclick=&quot;runBacktest()&quot;&gt;Run Paper Backtest&lt;/button&gt;
-      &lt;button class=&quot;darkBtn&quot; onclick=&quot;startAuto()&quot;&gt;Start Auto Refresh&lt;/button&gt;
+      &lt;button class=&quot;darkBtn&quot; onclick=&quot;startAuto()&quot;&gt;Start Auto&lt;/button&gt;
       &lt;button class=&quot;redBtn&quot; onclick=&quot;stopAuto()&quot;&gt;Stop&lt;/button&gt;
     &lt;/div&gt;
-    &lt;div id=&quot;status&quot; class=&quot;status&quot;&gt;Status: klik Fetch DexScreener untuk mengambil data token SOL real.&lt;/div&gt;
+    &lt;div id=&quot;status&quot; class=&quot;status&quot;&gt;Status: logic sekarang fokus micro MC, fresh pair, buy pressure, volume spike, anti-frozen.&lt;/div&gt;
   &lt;/div&gt;
 
   &lt;div class=&quot;grid5&quot;&gt;
     &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;Tokens Loaded&lt;/small&gt;&lt;b id=&quot;mLoaded&quot; class=&quot;blue&quot;&gt;0&lt;/b&gt;&lt;span&gt;real pairs&lt;/span&gt;&lt;/div&gt;
-    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;BUY Signals&lt;/small&gt;&lt;b id=&quot;mBuy&quot; class=&quot;good&quot;&gt;0&lt;/b&gt;&lt;span&gt;score tinggi&lt;/span&gt;&lt;/div&gt;
-    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;WATCH&lt;/small&gt;&lt;b id=&quot;mWatch&quot; class=&quot;yellow&quot;&gt;0&lt;/b&gt;&lt;span&gt;monitor dulu&lt;/span&gt;&lt;/div&gt;
-    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;AVOID&lt;/small&gt;&lt;b id=&quot;mAvoid&quot; class=&quot;bad&quot;&gt;0&lt;/b&gt;&lt;span&gt;risk tinggi&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;BUY Signals&lt;/small&gt;&lt;b id=&quot;mBuy&quot; class=&quot;good&quot;&gt;0&lt;/b&gt;&lt;span&gt;active only&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;WATCH&lt;/small&gt;&lt;b id=&quot;mWatch&quot; class=&quot;yellow&quot;&gt;0&lt;/b&gt;&lt;span&gt;monitor&lt;/span&gt;&lt;/div&gt;
+    &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;FROZEN/AVOID&lt;/small&gt;&lt;b id=&quot;mAvoid&quot; class=&quot;bad&quot;&gt;0&lt;/b&gt;&lt;span&gt;filtered&lt;/span&gt;&lt;/div&gt;
     &lt;div class=&quot;metric&quot;&gt;&lt;small&gt;Paper Balance&lt;/small&gt;&lt;b id=&quot;paperBal&quot; class=&quot;good&quot;&gt;$1,000&lt;/b&gt;&lt;span&gt;simulasi&lt;/span&gt;&lt;/div&gt;
   &lt;/div&gt;
 
+  
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;div class=&quot;card-title&quot;&gt;Active Signal Rotation &amp; Low MC Hunter&lt;/div&gt;
+    &lt;div class=&quot;controls&quot;&gt;
+      &lt;div&gt;&lt;label&gt;Max Market Cap&lt;/label&gt;&lt;input id=&quot;maxMC&quot; value=&quot;150000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Min Market Cap&lt;/label&gt;&lt;input id=&quot;minMC&quot; value=&quot;8000&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Signal Count&lt;/label&gt;&lt;input id=&quot;signalCount&quot; value=&quot;5&quot; type=&quot;number&quot;&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Entry Timing&lt;/label&gt;&lt;select id=&quot;entryTiming&quot;&gt;&lt;option value=&quot;all&quot;&gt;All&lt;/option&gt;&lt;option value=&quot;early&quot;&gt;Early&lt;/option&gt;&lt;option value=&quot;breakout&quot;&gt;Breakout&lt;/option&gt;&lt;option value=&quot;notlate&quot;&gt;Not Too Late&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Rotation&lt;/label&gt;&lt;select id=&quot;rotationMode&quot;&gt;&lt;option value=&quot;lowmc&quot; selected&gt;Low MC First&lt;/option&gt;&lt;option value=&quot;score&quot;&gt;By Score&lt;/option&gt;&lt;option value=&quot;fresh&quot;&gt;Fresh Pair&lt;/option&gt;&lt;option value=&quot;volume&quot;&gt;Volume Spike&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;label&gt;Current Index&lt;/label&gt;&lt;input id=&quot;signalIndex&quot; value=&quot;0&quot; readonly&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;grid2&quot;&gt;
+      &lt;div&gt;
+        &lt;div class=&quot;card-title&quot;&gt;Active BUY / WATCH Signals&lt;/div&gt;
+        &lt;div id=&quot;activeSignalsTable&quot; class=&quot;table&quot;&gt;
+          &lt;div class=&quot;row signal-row head&quot;&gt;&lt;span&gt;#&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;MC&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;Timing&lt;/span&gt;&lt;span&gt;CA&lt;/span&gt;&lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div&gt;
+        &lt;div class=&quot;card-title&quot;&gt;Signal History&lt;/div&gt;
+        &lt;div id=&quot;signalHistoryTable&quot; class=&quot;table&quot;&gt;
+          &lt;div class=&quot;row signal-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;MC&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;Timing&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+
   &lt;div class=&quot;grid2&quot;&gt;
     &lt;div class=&quot;card&quot;&gt;
-      &lt;div class=&quot;card-title&quot;&gt;Active Buy Signal Dashboard&lt;/div&gt;
+      &lt;div class=&quot;card-title&quot;&gt;Active BUY Signal Dashboard&lt;/div&gt;
       &lt;div class=&quot;signal-main&quot;&gt;
-        &lt;div class=&quot;signal-top&quot;&gt;
-          &lt;div&gt;
-            &lt;div id=&quot;signalAction&quot; class=&quot;action yellow&quot;&gt;WAIT&lt;/div&gt;
-            &lt;div id=&quot;signalToken&quot; class=&quot;token-title&quot;&gt;Belum ada token dipilih&lt;/div&gt;
-            &lt;div id=&quot;signalDesc&quot; class=&quot;token-sub&quot;&gt;Klik Fetch lalu Generate Active Signal.&lt;/div&gt;
-          &lt;/div&gt;
-          &lt;div id=&quot;signalScore&quot; class=&quot;score&quot;&gt;Score --/100&lt;/div&gt;
-        &lt;/div&gt;
-
-        &lt;div class=&quot;levels&quot;&gt;
-          &lt;div class=&quot;level&quot;&gt;&lt;small&gt;Entry&lt;/small&gt;&lt;b id=&quot;entry&quot;&gt;--&lt;/b&gt;&lt;/div&gt;
-          &lt;div class=&quot;level&quot;&gt;&lt;small&gt;TP1 / TP2&lt;/small&gt;&lt;b id=&quot;tpLevels&quot;&gt;--&lt;/b&gt;&lt;/div&gt;
-          &lt;div class=&quot;level&quot;&gt;&lt;small&gt;SL&lt;/small&gt;&lt;b id=&quot;slLevel&quot;&gt;--&lt;/b&gt;&lt;/div&gt;
-          &lt;div class=&quot;level&quot;&gt;&lt;small&gt;CA&lt;/small&gt;&lt;b id=&quot;caShort&quot;&gt;--&lt;/b&gt;&lt;/div&gt;
-        &lt;/div&gt;
-
-        &lt;div class=&quot;btns&quot; style=&quot;margin-top:14px&quot;&gt;
-          &lt;button onclick=&quot;copySelectedCA()&quot;&gt;Copy CA&lt;/button&gt;
-          &lt;button class=&quot;greenBtn&quot; onclick=&quot;openPaperTrade()&quot;&gt;Open Paper Trade&lt;/button&gt;
-          &lt;button class=&quot;darkBtn&quot; onclick=&quot;openDex()&quot;&gt;Open DexScreener&lt;/button&gt;
-        &lt;/div&gt;
+        &lt;div class=&quot;signal-top&quot;&gt;&lt;div&gt;&lt;div id=&quot;signalAction&quot; class=&quot;action yellow&quot;&gt;WAIT&lt;/div&gt;&lt;div id=&quot;signalToken&quot; class=&quot;token-title&quot;&gt;Belum ada token dipilih&lt;/div&gt;&lt;div id=&quot;signalDesc&quot; class=&quot;token-sub&quot;&gt;Klik Fetch lalu Generate Best BUY Signal.&lt;/div&gt;&lt;/div&gt;&lt;div id=&quot;signalScore&quot; class=&quot;score&quot;&gt;Score --/100&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;levels&quot;&gt;&lt;div class=&quot;level&quot;&gt;&lt;small&gt;Entry&lt;/small&gt;&lt;b id=&quot;entry&quot;&gt;--&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;level&quot;&gt;&lt;small&gt;TP1 / TP2&lt;/small&gt;&lt;b id=&quot;tpLevels&quot;&gt;--&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;level&quot;&gt;&lt;small&gt;SL&lt;/small&gt;&lt;b id=&quot;slLevel&quot;&gt;--&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;level&quot;&gt;&lt;small&gt;CA&lt;/small&gt;&lt;b id=&quot;caShort&quot;&gt;--&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;btns&quot; style=&quot;margin-top:14px&quot;&gt;&lt;button onclick=&quot;copySelectedCA()&quot;&gt;Copy CA&lt;/button&gt;&lt;button class=&quot;greenBtn&quot; onclick=&quot;openPaperTrade()&quot;&gt;Open Paper Trade&lt;/button&gt;&lt;button class=&quot;darkBtn&quot; onclick=&quot;openDex()&quot;&gt;DexScreener&lt;/button&gt;&lt;button class=&quot;darkBtn&quot; onclick=&quot;openGMGN()&quot;&gt;GMGN&lt;/button&gt;&lt;/div&gt;
       &lt;/div&gt;
     &lt;/div&gt;
 
     &lt;div class=&quot;card&quot;&gt;
       &lt;div class=&quot;card-title&quot;&gt;AI Research Token&lt;/div&gt;
       &lt;div class=&quot;research&quot;&gt;
+        &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Activity Check&lt;/small&gt;&lt;b id=&quot;rActivity&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rActivityText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
         &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Liquidity&lt;/small&gt;&lt;b id=&quot;rLiq&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rLiqText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
-        &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Volume&lt;/small&gt;&lt;b id=&quot;rVol&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rVolText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
-        &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Age &amp; Momentum&lt;/small&gt;&lt;b id=&quot;rAge&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rAgeText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
+        &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Volume &amp; TX&lt;/small&gt;&lt;b id=&quot;rVol&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rVolText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
         &lt;div class=&quot;research-box&quot;&gt;&lt;small&gt;Rug Risk&lt;/small&gt;&lt;b id=&quot;rRisk&quot;&gt;--&lt;/b&gt;&lt;p id=&quot;rRiskText&quot;&gt;--&lt;/p&gt;&lt;/div&gt;
       &lt;/div&gt;
     &lt;/div&gt;
@@ -2550,28 +2522,21 @@ button{cursor:pointer;background:#2563eb;border-color:#2563eb;font-weight:900}
       &lt;/div&gt;
       &lt;div class=&quot;chartbox&quot; style=&quot;margin-top:12px&quot;&gt;&lt;canvas id=&quot;equityChart&quot;&gt;&lt;/canvas&gt;&lt;/div&gt;
     &lt;/div&gt;
-
     &lt;div class=&quot;card&quot;&gt;
       &lt;div class=&quot;card-title&quot;&gt;Active Paper Trades&lt;/div&gt;
-      &lt;div id=&quot;activeTable&quot; class=&quot;table&quot;&gt;
-        &lt;div class=&quot;row history-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Entry&lt;/span&gt;&lt;span&gt;TP1&lt;/span&gt;&lt;span&gt;SL&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;span&gt;PnL&lt;/span&gt;&lt;/div&gt;
-      &lt;/div&gt;
+      &lt;div id=&quot;activeTable&quot; class=&quot;table&quot;&gt;&lt;div class=&quot;row history-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Entry&lt;/span&gt;&lt;span&gt;TP1&lt;/span&gt;&lt;span&gt;SL&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;span&gt;PnL&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
     &lt;/div&gt;
   &lt;/div&gt;
 
   &lt;div class=&quot;card&quot;&gt;
-    &lt;div class=&quot;card-title&quot;&gt;Live SOL Meme Scanner&lt;/div&gt;
-    &lt;div id=&quot;scannerTable&quot; class=&quot;table&quot;&gt;
-      &lt;div class=&quot;row scanner-row head&quot;&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Price&lt;/span&gt;&lt;span&gt;Liq&lt;/span&gt;&lt;span&gt;Vol 24H&lt;/span&gt;&lt;span&gt;Age&lt;/span&gt;&lt;span&gt;MC&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;CA&lt;/span&gt;&lt;/div&gt;
-    &lt;/div&gt;
-    &lt;div class=&quot;note&quot;&gt;Klik baris token untuk melihat analisa. Copy CA tersedia per token.&lt;/div&gt;
+    &lt;div class=&quot;card-title&quot;&gt;Live SOL Meme Scanner — Ponyin-style Early Intel&lt;/div&gt;
+    &lt;div id=&quot;scannerTable&quot; class=&quot;table&quot;&gt;&lt;div class=&quot;row scanner-row head&quot;&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Price&lt;/span&gt;&lt;span&gt;Liq&lt;/span&gt;&lt;span&gt;Vol 1H&lt;/span&gt;&lt;span&gt;TX 5m&lt;/span&gt;&lt;span&gt;Age&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;CA&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;div class=&quot;note&quot;&gt;BUY diprioritaskan untuk micro MC aktif, fresh, buy pressure masuk, belum overextended. Tetap cek GMGN/Dex sebelum entry real.&lt;/div&gt;
   &lt;/div&gt;
 
   &lt;div class=&quot;card&quot;&gt;
     &lt;div class=&quot;card-title&quot;&gt;Paper Trade History&lt;/div&gt;
-    &lt;div id=&quot;historyTable&quot; class=&quot;table&quot;&gt;
-      &lt;div class=&quot;row history-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Entry&lt;/span&gt;&lt;span&gt;Exit&lt;/span&gt;&lt;span&gt;Result&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;span&gt;PnL&lt;/span&gt;&lt;/div&gt;
-    &lt;/div&gt;
+    &lt;div id=&quot;historyTable&quot; class=&quot;table&quot;&gt;&lt;div class=&quot;row history-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Entry&lt;/span&gt;&lt;span&gt;Exit&lt;/span&gt;&lt;span&gt;Result&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;span&gt;PnL&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
   &lt;/div&gt;
 &lt;/div&gt;
 
@@ -2584,79 +2549,144 @@ function price(v){let n=Number(v||0); if(!n)return&#x27;--&#x27;; if(n&lt;0.0000
 function ageHours(ms){if(!ms)return 9999; return Math.max(0,(Date.now()-Number(ms))/3600000)}
 function ageText(h){if(h&lt;1)return Math.round(h*60)+&#x27;m&#x27;; if(h&lt;24)return h.toFixed(1)+&#x27;h&#x27;; return (h/24).toFixed(1)+&#x27;d&#x27;}
 function caOf(p){return p?.baseToken?.address || p?.pairAddress || &#x27;&#x27;}
-function setStatus(t){$(&#x27;status&#x27;).innerHTML=&#x27;Status: &#x27;+t; $(&#x27;statusBox&#x27;).value=String(t).replace(/&lt;[^&gt;]*&gt;/g,&#x27;&#x27;).slice(0,18)}
+function setStatus(t){$(&#x27;status&#x27;).innerHTML=&#x27;Status: &#x27;+t}
+function gmgnUrl(ca){return &#x27;https://gmgn.ai/sol/token/&#x27;+ca}
 
 function scorePair(p){
-  const liq=Number(p.liquidity?.usd||0), vol=Number(p.volume?.h24||0), vol1=Number(p.volume?.h1||0);
-  const buys=Number(p.txns?.h24?.buys||0), sells=Number(p.txns?.h24?.sells||0);
-  const ch=Number(p.priceChange?.h24||0), age=ageHours(p.pairCreatedAt), mc=Number(p.marketCap||p.fdv||0);
-  const minLiq=Number($(&#x27;minLiq&#x27;).value||10000), minVol=Number($(&#x27;minVol&#x27;).value||50000), maxAge=Number($(&#x27;maxAge&#x27;).value||96);
+  const liq=Number(p.liquidity?.usd||0), vol24=Number(p.volume?.h24||0), vol1=Number(p.volume?.h1||0), vol5=Number(p.volume?.m5||0);
+  const tx5=Number(p.txns?.m5?.buys||0)+Number(p.txns?.m5?.sells||0);
+  const tx1=Number(p.txns?.h1?.buys||0)+Number(p.txns?.h1?.sells||0);
+  const buys5=Number(p.txns?.m5?.buys||0), sells5=Number(p.txns?.m5?.sells||0);
+  const buys1=Number(p.txns?.h1?.buys||0), sells1=Number(p.txns?.h1?.sells||0);
+  const buys24=Number(p.txns?.h24?.buys||0), sells24=Number(p.txns?.h24?.sells||0);
+  const ch=Number(p.priceChange?.h24||0), ch1=Number(p.priceChange?.h1||0), ch5=Number(p.priceChange?.m5||0);
+  const age=ageHours(p.pairCreatedAt), mc=Number(p.marketCap||p.fdv||0);
+
+  const minLiq=Number($(&#x27;minLiq&#x27;).value||5000);
+  const minVol=Number($(&#x27;minVol&#x27;).value||15000);
+  const minVol1h=Number($(&#x27;minVol1h&#x27;).value||1000);
+  const minTx5m=Number($(&#x27;minTx5m&#x27;).value||1);
+  const maxAge=Number($(&#x27;maxAge&#x27;).value||24);
+  const minMC=Number($(&#x27;minMC&#x27;)?.value||8000);
+  const maxMC=Number($(&#x27;maxMC&#x27;)?.value||150000);
   const mode=$(&#x27;mode&#x27;).value;
 
   let score=0, risk=0, notes=[];
-  if(liq&gt;=minLiq){score+=24; notes.push(&#x27;liquidity cukup&#x27;)} else {risk+=25; notes.push(&#x27;liquidity tipis&#x27;)}
-  if(vol&gt;=minVol){score+=24; notes.push(&#x27;volume masuk&#x27;)} else {risk+=18; notes.push(&#x27;volume rendah&#x27;)}
-  if(age&lt;=maxAge){score+=12; notes.push(&#x27;pair masih fresh&#x27;)} else {score+=4; notes.push(&#x27;pair sudah lama&#x27;)}
-  if(buys+sells&gt;200) score+=10;
-  if(buys&gt;sells) score+=10; else risk+=8;
-  if(ch&gt;10 &amp;&amp; ch&lt;250) score+=14;
-  if(ch&gt;300){risk+=22; notes.push(&#x27;terlalu overextended&#x27;)}
-  if(mc&gt;0 &amp;&amp; liq&gt;0 &amp;&amp; mc/liq&gt;40){risk+=28; notes.push(&#x27;MC/Liq tinggi&#x27;)}
-  if(vol1&gt;vol*0.22) score+=8;
-  if(mode===&#x27;Strict Safety&#x27;){risk+=10; score-=5}
-  if(mode===&#x27;High Degen&#x27;){score+=8; risk+=10}
+
+  // 1) Anti frozen: must have recent activity
+  const frozen = (tx5 &lt; minTx5m &amp;&amp; vol5 &lt; 50) || (tx1 &lt; 3 &amp;&amp; vol1 &lt; minVol1h) || vol24 &lt; 1000 || liq &lt;= 0;
+  if(frozen){risk+=100; notes.push(&#x27;FROZEN: recent tx/volume mati&#x27;)}
+
+  // 2) Micro MC priority, Ponyin-style
+  const microMC = mc&gt;=minMC &amp;&amp; mc&lt;=maxMC;
+  const tooHighMC = mc&gt;maxMC;
+  const tooLowMC = mc&gt;0 &amp;&amp; mc&lt;minMC;
+  if(microMC){score+=28; notes.push(&#x27;micro MC zone&#x27;)}
+  else if(tooLowMC){score+=8; risk+=18; notes.push(&#x27;MC terlalu kecil / rawan&#x27;)}
+  else if(tooHighMC){risk+=32; notes.push(&#x27;MC sudah terlalu tinggi&#x27;)}
+
+  // 3) Fresh pair boost
+  if(age&lt;=1){score+=22; notes.push(&#x27;ultra fresh &lt;1h&#x27;)}
+  else if(age&lt;=3){score+=18; notes.push(&#x27;fresh &lt;3h&#x27;)}
+  else if(age&lt;=maxAge){score+=8; notes.push(&#x27;age masih oke&#x27;)}
+  else{risk+=18; notes.push(&#x27;pair sudah terlalu lama&#x27;)}
+
+  // 4) Liquidity enough but not too fat
+  if(liq&gt;=minLiq &amp;&amp; liq&lt;=150000){score+=18; notes.push(&#x27;liquidity early sehat&#x27;)}
+  else if(liq&lt;minLiq){risk+=20; notes.push(&#x27;liquidity terlalu tipis&#x27;)}
+  else{score+=4; notes.push(&#x27;liquidity besar, mungkin sudah ramai&#x27;)}
+
+  // 5) Volume spike, not just large volume
+  const volSpike = vol5&gt;0 &amp;&amp; vol1&gt;0 &amp;&amp; vol5 &gt;= (vol1/12)*1.4;
+  if(volSpike){score+=18; notes.push(&#x27;volume spike 5m&#x27;)}
+  else if(vol1&gt;=minVol1h){score+=9; notes.push(&#x27;volume 1h aktif&#x27;)}
+  else{risk+=16; notes.push(&#x27;volume belum masuk&#x27;)}
+
+  // 6) Buy pressure acceleration
+  const buyPressure5 = buys5 &gt;= Math.max(1,sells5*1.4) &amp;&amp; buys5&gt;0;
+  const buyPressure1 = buys1 &gt;= Math.max(2,sells1*1.2) &amp;&amp; buys1&gt;0;
+  if(buyPressure5){score+=18; notes.push(&#x27;buy pressure 5m&#x27;)}
+  else if(buyPressure1){score+=10; notes.push(&#x27;buy pressure 1h&#x27;)}
+  else{risk+=10; notes.push(&#x27;buy pressure belum kuat&#x27;)}
+
+  // 7) Not overextended
+  const overextended = ch&gt;220 || ch1&gt;120 || ch5&gt;60;
+  if(overextended){risk+=34; notes.push(&#x27;overextended / rawan top&#x27;)}
+  else if(ch1&gt;3 &amp;&amp; ch1&lt;80){score+=10; notes.push(&#x27;momentum sehat&#x27;)}
+  else if(ch1&lt; -20){risk+=14; notes.push(&#x27;momentum melemah&#x27;)}
+
+  // 8) Market cap/liquidity ratio
+  if(mc&gt;0 &amp;&amp; liq&gt;0 &amp;&amp; mc/liq&gt;30){risk+=20; notes.push(&#x27;MC/Liq kurang sehat&#x27;)}
+  if(mc&gt;0 &amp;&amp; liq&gt;0 &amp;&amp; mc/liq&lt;18){score+=7; notes.push(&#x27;MC/Liq masih oke&#x27;)}
+
+  if(mode===&#x27;Strict Anti-Rug&#x27;){risk+=10; score-=5}
+  if(mode===&#x27;High Degen&#x27;){score+=8; risk+=8}
+  if(mode===&#x27;Low MC Hunter&#x27;){score+=10; if(!microMC) risk+=16}
+
   score=Math.max(0,Math.min(100,Math.round(score-risk*0.45)));
 
+  let timing=&#x27;NORMAL&#x27;;
+  if(frozen) timing=&#x27;DEAD&#x27;;
+  else if(age&lt;=3 &amp;&amp; microMC &amp;&amp; buyPressure5 &amp;&amp; !overextended) timing=&#x27;EARLY&#x27;;
+  else if(volSpike &amp;&amp; buyPressure1 &amp;&amp; !overextended) timing=&#x27;BREAKOUT&#x27;;
+  else if(overextended) timing=&#x27;CHASING&#x27;;
+  else if(age&lt;=maxAge &amp;&amp; microMC) timing=&#x27;MID&#x27;;
+
   let signal=&#x27;AVOID&#x27;;
-  if(score&gt;=72 &amp;&amp; liq&gt;=minLiq &amp;&amp; vol&gt;=minVol) signal=&#x27;BUY&#x27;;
-  else if(score&gt;=55) signal=&#x27;WATCH&#x27;;
+  if(frozen) signal=&#x27;FROZEN&#x27;;
+  else if(score&gt;=72 &amp;&amp; microMC &amp;&amp; !overextended &amp;&amp; (buyPressure5 || volSpike) &amp;&amp; liq&gt;=minLiq) signal=&#x27;BUY&#x27;;
+  else if(score&gt;=55 &amp;&amp; !overextended) signal=&#x27;WATCH&#x27;;
 
   let riskLabel=&#x27;HIGH&#x27;;
-  if(score&gt;=75 &amp;&amp; risk&lt;25) riskLabel=&#x27;MEDIUM&#x27;;
-  if(score&lt;45 || risk&gt;45) riskLabel=&#x27;VERY HIGH&#x27;;
+  if(frozen) riskLabel=&#x27;FROZEN&#x27;;
+  else if(score&gt;=75 &amp;&amp; !overextended &amp;&amp; microMC) riskLabel=&#x27;MEDIUM&#x27;;
+  else if(score&lt;45 || risk&gt;45) riskLabel=&#x27;VERY HIGH&#x27;;
 
-  return {score,signal,risk:riskLabel,liq,vol,vol1,buys,sells,ch,age,mc,notes};
+  return {score,signal,risk:riskLabel,frozen,liq,vol24,vol1,vol5,tx5,tx1,buys5,sells5,buys24,sells24,ch,ch1,ch5,age,mc,notes,timing,lowMCPass:microMC,volSpike,buyPressure5,overextended};
+}
+
+async function fetchOneQuery(q){
+  const res=await fetch(&#x27;https://api.dexscreener.com/latest/dex/search?q=&#x27;+encodeURIComponent(q));
+  if(!res.ok)throw new Error(&#x27;HTTP &#x27;+res.status);
+  const data=await res.json();
+  return data.pairs||[];
 }
 
 async function fetchDex(){
-  const q=$(&#x27;solSearch&#x27;).value.trim()||&#x27;solana&#x27;;
+  const q=($(&#x27;solSearch&#x27;).value||&#x27;solana meme&#x27;).trim();
   setStatus(&#x27;fetching DexScreener...&#x27;);
   try{
-    const res=await fetch(&#x27;https://api.dexscreener.com/latest/dex/search?q=&#x27;+encodeURIComponent(q));
-    if(!res.ok) throw new Error(&#x27;HTTP &#x27;+res.status);
-    const data=await res.json();
-    pairs=(data.pairs||[])
+    const queries=[q,&#x27;solana meme&#x27;,&#x27;solana pump&#x27;,&#x27;pump fun&#x27;,&#x27;solana bonk&#x27;];
+    const all=[];
+    for(const query of queries){
+      try{ all.push(...await fetchOneQuery(query)); }catch(e){}
+    }
+    const seen=new Set();
+    pairs=all
       .filter(p=&gt;p.chainId===&#x27;solana&#x27; &amp;&amp; p.priceUsd &amp;&amp; caOf(p))
+      .filter(p=&gt;{const key=p.pairAddress||caOf(p); if(seen.has(key))return false; seen.add(key); return true})
       .map(p=&gt;({...p, ai:scorePair(p)}))
-      .sort((a,b)=&gt;(b.ai.score-a.ai.score)||((b.volume?.h24||0)-(a.volume?.h24||0)))
-      .slice(0,80);
+      .sort((a,b)=&gt;{
+        const rank={BUY:3,WATCH:2,AVOID:1,FROZEN:0};
+        return (rank[b.ai.signal]-rank[a.ai.signal]) || (b.ai.score-a.ai.score) || ((b.volume?.h1||0)-(a.volume?.h1||0));
+      })
+      .slice(0,100);
 
-    renderTable();
-    updateMetrics();
-    if(pairs.length) selectToken(pairs[0]);
-    setStatus(&#x27;&lt;b&gt;&#x27;+pairs.length+&#x27;&lt;/b&gt; SOL pairs loaded. Sinyal aktif sudah dibuat.&#x27;);
-  }catch(e){
-    setStatus(&#x27;&lt;span style=&quot;color:#f87171&quot;&gt;Fetch gagal: &#x27;+e.message+&#x27;&lt;/span&gt;&#x27;);
-  }
+    renderTable(); updateMetrics(); renderActiveSignals(); generateActiveSignal();
+    setStatus(&#x27;&lt;b&gt;&#x27;+pairs.length+&#x27;&lt;/b&gt; SOL pairs loaded. Frozen tokens difilter dari sinyal BUY.&#x27;);
+  }catch(e){setStatus(&#x27;&lt;span style=&quot;color:#f87171&quot;&gt;Fetch gagal: &#x27;+e.message+&#x27;&lt;/span&gt;&#x27;)}
 }
 
 function renderTable(){
   const el=$(&#x27;scannerTable&#x27;);
-  el.innerHTML=&#x27;&lt;div class=&quot;row scanner-row head&quot;&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Price&lt;/span&gt;&lt;span&gt;Liq&lt;/span&gt;&lt;span&gt;Vol 24H&lt;/span&gt;&lt;span&gt;Age&lt;/span&gt;&lt;span&gt;MC&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;CA&lt;/span&gt;&lt;/div&gt;&#x27;;
+  el.innerHTML=&#x27;&lt;div class=&quot;row scanner-row head&quot;&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Price&lt;/span&gt;&lt;span&gt;Liq&lt;/span&gt;&lt;span&gt;Vol 1H&lt;/span&gt;&lt;span&gt;TX 5m&lt;/span&gt;&lt;span&gt;Age&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;CA&lt;/span&gt;&lt;/div&gt;&#x27;;
   pairs.forEach((p,i)=&gt;{
     const a=p.ai, ca=caOf(p);
-    const row=document.createElement(&#x27;div&#x27;);
-    row.className=&#x27;row scanner-row&#x27;;
-    row.style.cursor=&#x27;pointer&#x27;;
-    row.onclick=()=&gt;selectToken(p);
+    const cls=a.signal===&#x27;BUY&#x27;?&#x27;buy&#x27;:a.signal===&#x27;WATCH&#x27;?&#x27;watch&#x27;:a.signal===&#x27;FROZEN&#x27;?&#x27;frozen&#x27;:&#x27;avoid&#x27;;
+    const row=document.createElement(&#x27;div&#x27;); row.className=&#x27;row scanner-row&#x27;; row.style.cursor=&#x27;pointer&#x27;; row.onclick=()=&gt;selectToken(p);
     row.innerHTML=`&lt;span&gt;${p.baseToken?.symbol||&#x27;--&#x27;} · ${p.baseToken?.name||&#x27;&#x27;}&lt;/span&gt;
-      &lt;span&gt;${price(p.priceUsd)}&lt;/span&gt;
-      &lt;span&gt;${money(a.liq)}&lt;/span&gt;
-      &lt;span&gt;${money(a.vol)}&lt;/span&gt;
-      &lt;span&gt;${ageText(a.age)}&lt;/span&gt;
-      &lt;span&gt;${money(a.mc)}&lt;/span&gt;
-      &lt;span&gt;&lt;span class=&quot;badge ${a.signal===&#x27;BUY&#x27;?&#x27;buy&#x27;:a.signal===&#x27;WATCH&#x27;?&#x27;watch&#x27;:&#x27;avoid&#x27;}&quot;&gt;${a.signal}&lt;/span&gt;&lt;/span&gt;
-      &lt;span&gt;${a.score}&lt;/span&gt;
+      &lt;span&gt;${price(p.priceUsd)}&lt;/span&gt;&lt;span&gt;${money(a.liq)}&lt;/span&gt;&lt;span&gt;${money(a.vol1)}&lt;/span&gt;&lt;span&gt;${a.tx5}&lt;/span&gt;&lt;span&gt;${ageText(a.age)}&lt;/span&gt;
+      &lt;span&gt;&lt;span class=&quot;badge ${cls}&quot;&gt;${a.signal}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;${a.score}&lt;/span&gt;
       &lt;span&gt;&lt;button class=&quot;copyBtn&quot; onclick=&quot;event.stopPropagation(); copyCA(&#x27;${ca}&#x27;)&quot;&gt;Copy CA&lt;/button&gt;&lt;/span&gt;`;
     el.appendChild(row);
   });
@@ -2666,103 +2696,158 @@ function updateMetrics(){
   $(&#x27;mLoaded&#x27;).textContent=pairs.length;
   $(&#x27;mBuy&#x27;).textContent=pairs.filter(p=&gt;p.ai.signal===&#x27;BUY&#x27;).length;
   $(&#x27;mWatch&#x27;).textContent=pairs.filter(p=&gt;p.ai.signal===&#x27;WATCH&#x27;).length;
-  $(&#x27;mAvoid&#x27;).textContent=pairs.filter(p=&gt;p.ai.signal===&#x27;AVOID&#x27;).length;
-  $(&#x27;btBest&#x27;).textContent=pairs[0]?.baseToken?.symbol||&#x27;--&#x27;;
+  $(&#x27;mAvoid&#x27;).textContent=pairs.filter(p=&gt;p.ai.signal===&#x27;AVOID&#x27;||p.ai.signal===&#x27;FROZEN&#x27;).length;
+  $(&#x27;btBest&#x27;).textContent=pairs.find(p=&gt;p.ai.signal===&#x27;BUY&#x27;)?.baseToken?.symbol || pairs[0]?.baseToken?.symbol || &#x27;--&#x27;;
 }
 
 function selectToken(p){
   selected=p;
   const a=p.ai, ca=caOf(p), entry=Number(p.priceUsd);
-  const tp1=entry*(1+Number($(&#x27;tp1&#x27;).value||25)/100);
-  const tp2=entry*(1+Number($(&#x27;tp2&#x27;).value||60)/100);
-  const sl=entry*(1-Number($(&#x27;sl&#x27;).value||18)/100);
-
+  const tp1=entry*(1+Number($(&#x27;tp1&#x27;).value||25)/100), tp2=entry*(1+Number($(&#x27;tp2&#x27;).value||60)/100), sl=entry*(1-Number($(&#x27;sl&#x27;).value||18)/100);
   $(&#x27;signalAction&#x27;).textContent=a.signal;
   $(&#x27;signalAction&#x27;).className=&#x27;action &#x27;+(a.signal===&#x27;BUY&#x27;?&#x27;good&#x27;:a.signal===&#x27;WATCH&#x27;?&#x27;yellow&#x27;:&#x27;bad&#x27;);
   $(&#x27;signalToken&#x27;).textContent=(p.baseToken?.symbol||&#x27;--&#x27;)+&#x27; · &#x27;+(p.baseToken?.name||&#x27;&#x27;);
   $(&#x27;signalDesc&#x27;).textContent=a.signal===&#x27;BUY&#x27;
-    ? &#x27;Token ini masuk kandidat BUY karena liquidity, volume, dan momentum cukup kuat.&#x27;
+    ? &#x27;Ponyin-style BUY: micro MC &#x27;+money(a.mc)+&#x27;, timing &#x27;+a.timing+&#x27;, fresh/activity valid, belum overextended.&#x27;
     : a.signal===&#x27;WATCH&#x27;
-      ? &#x27;Token ini layak dipantau, tapi belum cukup kuat untuk entry besar.&#x27;
-      : &#x27;Token ini sebaiknya dihindari karena risk filter kurang aman.&#x27;;
+      ? &#x27;Masih watchlist. Data aktif ada, tapi score belum cukup untuk BUY besar.&#x27;
+      : a.signal===&#x27;FROZEN&#x27;
+        ? &#x27;Token ini terlihat frozen: TX/volume baru mati. Jangan dijadikan sinyal BUY.&#x27;
+        : &#x27;Token ini masuk AVOID karena risk filter tidak lolos.&#x27;;
   $(&#x27;signalScore&#x27;).textContent=&#x27;Score &#x27;+a.score+&#x27;/100&#x27;;
-  $(&#x27;entry&#x27;).textContent=price(entry);
-  $(&#x27;tpLevels&#x27;).textContent=price(tp1)+&#x27; / &#x27;+price(tp2);
-  $(&#x27;slLevel&#x27;).textContent=price(sl);
-  $(&#x27;caShort&#x27;).textContent=ca?ca.slice(0,6)+&#x27;...&#x27;+ca.slice(-4):&#x27;--&#x27;;
-
-  $(&#x27;rLiq&#x27;).textContent=money(a.liq);
-  $(&#x27;rLiqText&#x27;).textContent=a.liq&gt;=Number($(&#x27;minLiq&#x27;).value||10000)?&#x27;Liquidity cukup untuk entry kecil. Tetap cek slippage sebelum beli.&#x27;:&#x27;Liquidity tipis, rawan slippage dan rug.&#x27;;
-  $(&#x27;rVol&#x27;).textContent=money(a.vol);
-  $(&#x27;rVolText&#x27;).textContent=a.vol&gt;=Number($(&#x27;minVol&#x27;).value||50000)?&#x27;Volume 24H cukup aktif, ada minat pasar.&#x27;:&#x27;Volume masih rendah, sinyal belum kuat.&#x27;;
-  $(&#x27;rAge&#x27;).textContent=ageText(a.age)+&#x27; · &#x27;+(a.ch&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+a.ch.toFixed(1)+&#x27;%&#x27;;
-  $(&#x27;rAgeText&#x27;).textContent=a.age&lt;6?&#x27;Pair sangat baru, peluang cepat tapi risk rug tinggi.&#x27;:a.age&lt;96?&#x27;Pair masih dalam zona aktif untuk degen scanner.&#x27;:&#x27;Pair sudah cukup lama, momentum perlu divalidasi ulang.&#x27;;
-  $(&#x27;rRisk&#x27;).textContent=a.risk;
-  $(&#x27;rRisk&#x27;).className=a.risk===&#x27;MEDIUM&#x27;?&#x27;yellow&#x27;:&#x27;bad&#x27;;
-  $(&#x27;rRiskText&#x27;).textContent=&#x27;TX Buy/Sell: &#x27;+a.buys+&#x27;/&#x27;+a.sells+&#x27;. Catatan: &#x27;+(a.notes.join(&#x27;, &#x27;)||&#x27;normal&#x27;)+&#x27;.&#x27;;
-  setStatus(&#x27;Selected &#x27;+(p.baseToken?.symbol||&#x27;token&#x27;)+&#x27; · klik Copy CA untuk copy contract.&#x27;);
+  $(&#x27;entry&#x27;).textContent=price(entry); $(&#x27;tpLevels&#x27;).textContent=price(tp1)+&#x27; / &#x27;+price(tp2); $(&#x27;slLevel&#x27;).textContent=price(sl); $(&#x27;caShort&#x27;).textContent=ca?ca.slice(0,6)+&#x27;...&#x27;+ca.slice(-4):&#x27;--&#x27;;
+  $(&#x27;rActivity&#x27;).textContent=a.frozen?&#x27;FROZEN&#x27;:&#x27;ACTIVE&#x27;;
+  $(&#x27;rActivity&#x27;).className=a.frozen?&#x27;bad&#x27;:&#x27;good&#x27;;
+  $(&#x27;rActivityText&#x27;).textContent=`TX 5m: ${a.tx5}, Vol 5m: ${money(a.vol5)}, Vol 1h: ${money(a.vol1)}. Spike: ${a.volSpike?&#x27;YES&#x27;:&#x27;NO&#x27;}, Buy pressure: ${a.buyPressure5?&#x27;YES&#x27;:&#x27;NO&#x27;}. ${a.frozen?&#x27;Tidak layak BUY.&#x27;:&#x27;Masih ada aktivitas market.&#x27;}`;
+  $(&#x27;rLiq&#x27;).textContent=money(a.liq); $(&#x27;rLiqText&#x27;).textContent=a.liq&gt;=Number($(&#x27;minLiq&#x27;).value||15000)?&#x27;Liquidity cukup untuk entry kecil. Tetap cek slippage.&#x27;:&#x27;Liquidity tipis, rawan slippage.&#x27;;
+  $(&#x27;rVol&#x27;).textContent=`1H ${money(a.vol1)} / 24H ${money(a.vol24)}`; $(&#x27;rVolText&#x27;).textContent=`Buy/Sell 5m: ${a.buys5}/${a.sells5}. Change 1h: ${(a.ch1&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+a.ch1.toFixed(1)}%.`;
+  $(&#x27;rRisk&#x27;).textContent=a.risk; $(&#x27;rRisk&#x27;).className=a.risk===&#x27;MEDIUM&#x27;?&#x27;yellow&#x27;:&#x27;bad&#x27;; $(&#x27;rRiskText&#x27;).textContent=&#x27;Catatan: &#x27;+(a.notes.join(&#x27;, &#x27;)||&#x27;normal&#x27;)+&#x27;.&#x27;;
+  setStatus(&#x27;Selected &#x27;+(p.baseToken?.symbol||&#x27;token&#x27;)+&#x27; · cek GMGN/Dex sebelum entry real.&#x27;);
 }
 
 function generateActiveSignal(){
   if(!pairs.length){fetchDex();return}
-  const buy=pairs.find(p=&gt;p.ai.signal===&#x27;BUY&#x27;) || pairs.find(p=&gt;p.ai.signal===&#x27;WATCH&#x27;) || pairs[0];
-  selectToken(buy);
+  const list=getSignalCandidates();
+  const best=list[0] || pairs.find(p=&gt;p.ai.signal===&#x27;BUY&#x27;) || pairs.find(p=&gt;p.ai.signal===&#x27;WATCH&#x27;) || pairs[0];
+  if(best){
+    $(&#x27;signalIndex&#x27;).value=0;
+    selectAndLog(best,&#x27;BEST&#x27;);
+    renderActiveSignals();
+  }
 }
 
-async function copyCA(ca){
-  try{await navigator.clipboard.writeText(ca);setStatus(&#x27;&lt;span style=&quot;color:#4ade80&quot;&gt;CA copied:&lt;/span&gt; &#x27;+ca.slice(0,8)+&#x27;...&#x27;+ca.slice(-4))}
-  catch(e){setStatus(&#x27;CA: &#x27;+ca)}
-}
+async function copyCA(ca){try{await navigator.clipboard.writeText(ca);setStatus(&#x27;&lt;span style=&quot;color:#4ade80&quot;&gt;CA copied:&lt;/span&gt; &#x27;+ca.slice(0,8)+&#x27;...&#x27;+ca.slice(-4))}catch(e){setStatus(&#x27;CA: &#x27;+ca)}}
 function copySelectedCA(){if(selected)copyCA(caOf(selected))}
 function openDex(){if(selected?.url)window.open(selected.url,&#x27;_blank&#x27;)}
+function openGMGN(){if(selected)window.open(gmgnUrl(caOf(selected)),&#x27;_blank&#x27;)}
 
 function openPaperTrade(){
   if(!selected){generateActiveSignal();return}
-  if(selected.ai.signal===&#x27;AVOID&#x27;){setStatus(&#x27;Token AVOID, paper trade tidak dibuka. Pilih token lain.&#x27;);return}
-  const entry=Number(selected.priceUsd);
-  const tp=entry*(1+Number($(&#x27;tp1&#x27;).value||25)/100);
-  const sl=entry*(1-Number($(&#x27;sl&#x27;).value||18)/100);
-  const row=document.createElement(&#x27;div&#x27;);
-  row.className=&#x27;row history-row&#x27;;
+  if(selected.ai.signal===&#x27;AVOID&#x27;||selected.ai.signal===&#x27;FROZEN&#x27;){setStatus(&#x27;Token tidak layak paper trade karena &#x27;+selected.ai.signal);return}
+  const entry=Number(selected.priceUsd), tp=entry*(1+Number($(&#x27;tp1&#x27;).value||25)/100), sl=entry*(1-Number($(&#x27;sl&#x27;).value||18)/100);
+  const row=document.createElement(&#x27;div&#x27;); row.className=&#x27;row history-row&#x27;;
   row.innerHTML=`&lt;span&gt;Now&lt;/span&gt;&lt;span&gt;${selected.baseToken?.symbol||&#x27;--&#x27;}&lt;/span&gt;&lt;span&gt;${price(entry)}&lt;/span&gt;&lt;span&gt;${price(tp)}&lt;/span&gt;&lt;span&gt;${price(sl)}&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;badge buy&quot;&gt;OPEN&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;yellow&quot;&gt;$0&lt;/span&gt;`;
-  $(&#x27;activeTable&#x27;).appendChild(row);
-  setStatus(&#x27;Paper trade opened: &#x27;+(selected.baseToken?.symbol||&#x27;token&#x27;));
+  $(&#x27;activeTable&#x27;).appendChild(row); setStatus(&#x27;Paper trade opened: &#x27;+(selected.baseToken?.symbol||&#x27;token&#x27;));
 }
 
 function runBacktest(){
   if(!pairs.length){setStatus(&#x27;Fetch DexScreener dulu.&#x27;);return}
-  const bal0=Number($(&#x27;paperBalInput&#x27;).value||1000), stakePct=Number($(&#x27;stakePct&#x27;).value||8)/100;
-  const tp=Number($(&#x27;tp1&#x27;).value||25)/100, sl=Number($(&#x27;sl&#x27;).value||18)/100;
-  let bal=bal0,w=0,l=0,pnlAll=0,trades=0;
-  labels=[&#x27;Start&#x27;];equity=[bal0];
+  const bal0=Number($(&#x27;paperBalInput&#x27;).value||1000), stakePct=.08, tp=Number($(&#x27;tp1&#x27;).value||25)/100, sl=Number($(&#x27;sl&#x27;).value||18)/100;
+  let bal=bal0,w=0,l=0,pnlAll=0,trades=0; labels=[&#x27;Start&#x27;];equity=[bal0];
   $(&#x27;historyTable&#x27;).innerHTML=&#x27;&lt;div class=&quot;row history-row head&quot;&gt;&lt;span&gt;Time&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;Entry&lt;/span&gt;&lt;span&gt;Exit&lt;/span&gt;&lt;span&gt;Result&lt;/span&gt;&lt;span&gt;Status&lt;/span&gt;&lt;span&gt;PnL&lt;/span&gt;&lt;/div&gt;&#x27;;
-
-  pairs.filter(p=&gt;p.ai.signal!==&#x27;AVOID&#x27;).slice(0,30).forEach((p,i)=&gt;{
-    const a=p.ai, entry=Number(p.priceUsd), change=Number(p.priceChange?.h24||0)/100;
-    const win=a.score&gt;=68 || change&gt;tp;
+  pairs.filter(p=&gt;p.ai.signal===&#x27;BUY&#x27;||p.ai.signal===&#x27;WATCH&#x27;).slice(0,30).forEach((p,i)=&gt;{
+    const a=p.ai, entry=Number(p.priceUsd), change=Math.max(Number(p.priceChange?.h1||0)/100,Number(p.priceChange?.h24||0)/100);
+    const win=a.signal===&#x27;BUY&#x27; &amp;&amp; (a.score&gt;=72 || change&gt;tp);
     const exit=win?entry*(1+Math.min(Math.max(Math.abs(change),0.08),tp)):entry*(1-sl);
-    const stake=Math.max(5,bal*stakePct);
-    const pnl=win?stake*((exit-entry)/entry):-stake*sl;
-    bal+=pnl;pnlAll+=pnl;trades++;if(win)w++;else l++;
-    labels.push(p.baseToken?.symbol||String(i+1));equity.push(Number(bal.toFixed(2)));
-    const row=document.createElement(&#x27;div&#x27;);row.className=&#x27;row history-row&#x27;;
+    const stake=Math.max(5,bal*stakePct), pnl=win?stake*((exit-entry)/entry):-stake*sl;
+    bal+=pnl;pnlAll+=pnl;trades++;if(win)w++;else l++;labels.push(p.baseToken?.symbol||String(i+1));equity.push(Number(bal.toFixed(2)));
+    const row=document.createElement(&#x27;div&#x27;); row.className=&#x27;row history-row&#x27;;
     row.innerHTML=`&lt;span&gt;${i+1}&lt;/span&gt;&lt;span&gt;${p.baseToken?.symbol||&#x27;--&#x27;}&lt;/span&gt;&lt;span&gt;${price(entry)}&lt;/span&gt;&lt;span&gt;${price(exit)}&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;badge ${win?&#x27;buy&#x27;:&#x27;avoid&#x27;}&quot;&gt;${win?&#x27;WIN&#x27;:&#x27;LOSS&#x27;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;${a.signal}&lt;/span&gt;&lt;span class=&quot;${pnl&gt;=0?&#x27;good&#x27;:&#x27;bad&#x27;}&quot;&gt;${pnl&gt;=0?&#x27;+&#x27;:&#x27;&#x27;}${money(pnl)}&lt;/span&gt;`;
     $(&#x27;historyTable&#x27;).appendChild(row);
   });
-
-  $(&#x27;paperBal&#x27;).textContent=money(bal);
-  $(&#x27;btTrades&#x27;).textContent=trades;
-  $(&#x27;btWR&#x27;).textContent=trades?(w/trades*100).toFixed(1)+&#x27;%&#x27;:&#x27;--%&#x27;;
-  $(&#x27;btProfit&#x27;).textContent=(pnlAll&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+money(pnlAll);
-  $(&#x27;btProfit&#x27;).className=pnlAll&gt;=0?&#x27;good&#x27;:&#x27;bad&#x27;;
-  renderChart();
-  setStatus(&#x27;Paper backtest selesai. Trades: &#x27;+trades);
+  $(&#x27;paperBal&#x27;).textContent=money(bal); $(&#x27;btTrades&#x27;).textContent=trades; $(&#x27;btWR&#x27;).textContent=trades?(w/trades*100).toFixed(1)+&#x27;%&#x27;:&#x27;--%&#x27;; $(&#x27;btProfit&#x27;).textContent=(pnlAll&gt;=0?&#x27;+&#x27;:&#x27;&#x27;)+money(pnlAll); $(&#x27;btProfit&#x27;).className=pnlAll&gt;=0?&#x27;good&#x27;:&#x27;bad&#x27;; renderChart(); setStatus(&#x27;Paper backtest selesai. Frozen token tidak ikut.&#x27;);
 }
 
-function renderChart(){
-  const ctx=$(&#x27;equityChart&#x27;); if(!ctx)return;
-  if(chart)chart.destroy();
-  chart=new Chart(ctx,{type:&#x27;line&#x27;,data:{labels,datasets:[{data:equity,borderColor:&#x27;#4ade80&#x27;,backgroundColor:&#x27;rgba(74,222,128,.14)&#x27;,fill:true,tension:.35,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:&#x27;#94a3b8&#x27;,maxTicksLimit:8},grid:{color:&#x27;rgba(255,255,255,.05)&#x27;}},y:{ticks:{color:&#x27;#94a3b8&#x27;},grid:{color:&#x27;rgba(255,255,255,.05)&#x27;}}}}});
+function renderChart(){const ctx=$(&#x27;equityChart&#x27;); if(!ctx)return; if(chart)chart.destroy(); chart=new Chart(ctx,{type:&#x27;line&#x27;,data:{labels,datasets:[{data:equity,borderColor:&#x27;#4ade80&#x27;,backgroundColor:&#x27;rgba(74,222,128,.14)&#x27;,fill:true,tension:.35,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:&#x27;#94a3b8&#x27;,maxTicksLimit:8},grid:{color:&#x27;rgba(255,255,255,.05)&#x27;}},y:{ticks:{color:&#x27;#94a3b8&#x27;},grid:{color:&#x27;rgba(255,255,255,.05)&#x27;}}}}})}
+
+function passesTiming(p){
+  const f=$(&#x27;entryTiming&#x27;)?.value||&#x27;all&#x27;;
+  const t=p.ai.timing;
+  if(f===&#x27;all&#x27;) return true;
+  if(f===&#x27;early&#x27;) return t===&#x27;EARLY&#x27;;
+  if(f===&#x27;breakout&#x27;) return t===&#x27;BREAKOUT&#x27;;
+  if(f===&#x27;notlate&#x27;) return t!==&#x27;CHASING&#x27; &amp;&amp; t!==&#x27;DEAD&#x27;;
+  return true;
+}
+
+function getSignalCandidates(){
+  const maxMC=Number($(&#x27;maxMC&#x27;)?.value||500000);
+  const minMC=Number($(&#x27;minMC&#x27;)?.value||30000);
+  const mode=$(&#x27;rotationMode&#x27;)?.value||&#x27;score&#x27;;
+  let list=pairs.filter(p=&gt;
+    (p.ai.signal===&#x27;BUY&#x27;||p.ai.signal===&#x27;WATCH&#x27;) &amp;&amp;
+    !p.ai.frozen &amp;&amp;
+    passesTiming(p)
+  );
+
+  if(mode===&#x27;lowmc&#x27; || ($(&#x27;mode&#x27;)?.value===&#x27;Low MC Hunter&#x27;)){
+    list=list.filter(p=&gt;p.ai.mc&gt;=minMC &amp;&amp; p.ai.mc&lt;=maxMC);
+    list.sort((a,b)=&gt;(b.ai.score-a.ai.score)||((a.ai.mc||999999999)-(b.ai.mc||999999999)));
+  }else if(mode===&#x27;fresh&#x27;){
+    list.sort((a,b)=&gt;a.ai.age-b.ai.age || b.ai.score-a.ai.score);
+  }else if(mode===&#x27;volume&#x27;){
+    list.sort((a,b)=&gt;b.ai.vol1-a.ai.vol1 || b.ai.score-a.ai.score);
+  }else{
+    list.sort((a,b)=&gt;b.ai.score-a.ai.score);
+  }
+  return list.slice(0,Number($(&#x27;signalCount&#x27;)?.value||5));
+}
+
+function renderActiveSignals(){
+  const table=$(&#x27;activeSignalsTable&#x27;); if(!table) return;
+  const list=getSignalCandidates();
+  table.innerHTML=&#x27;&lt;div class=&quot;row signal-row head&quot;&gt;&lt;span&gt;#&lt;/span&gt;&lt;span&gt;Token&lt;/span&gt;&lt;span&gt;MC&lt;/span&gt;&lt;span&gt;Signal&lt;/span&gt;&lt;span&gt;Score&lt;/span&gt;&lt;span&gt;Timing&lt;/span&gt;&lt;span&gt;CA&lt;/span&gt;&lt;/div&gt;&#x27;;
+  list.forEach((p,i)=&gt;{
+    const cls=p.ai.signal===&#x27;BUY&#x27;?&#x27;buy&#x27;:&#x27;watch&#x27;;
+    const ca=caOf(p);
+    const row=document.createElement(&#x27;div&#x27;); row.className=&#x27;row signal-row&#x27;; row.style.cursor=&#x27;pointer&#x27;; row.onclick=()=&gt;selectAndLog(p,&#x27;SELECT&#x27;);
+    row.innerHTML=`&lt;span&gt;${i+1}&lt;/span&gt;&lt;span&gt;${p.baseToken?.symbol||&#x27;--&#x27;}&lt;/span&gt;&lt;span&gt;${money(p.ai.mc)}&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;badge ${cls}&quot;&gt;${p.ai.signal}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;${p.ai.score}&lt;/span&gt;&lt;span&gt;${p.ai.timing}&lt;/span&gt;&lt;span&gt;&lt;button class=&quot;copyBtn&quot; onclick=&quot;event.stopPropagation(); copyCA(&#x27;${ca}&#x27;)&quot;&gt;Copy&lt;/button&gt;&lt;/span&gt;`;
+    table.appendChild(row);
+  });
+}
+
+function addSignalHistory(p,status=&#x27;GENERATED&#x27;){
+  const table=$(&#x27;signalHistoryTable&#x27;); if(!table||!p) return;
+  const cls=p.ai.signal===&#x27;BUY&#x27;?&#x27;buy&#x27;:p.ai.signal===&#x27;WATCH&#x27;?&#x27;watch&#x27;:&#x27;avoid&#x27;;
+  const row=document.createElement(&#x27;div&#x27;); row.className=&#x27;row signal-row&#x27;;
+  row.innerHTML=`&lt;span&gt;${new Date().toLocaleTimeString(&#x27;id-ID&#x27;,{hour:&#x27;2-digit&#x27;,minute:&#x27;2-digit&#x27;})}&lt;/span&gt;&lt;span&gt;${p.baseToken?.symbol||&#x27;--&#x27;}&lt;/span&gt;&lt;span&gt;${money(p.ai.mc)}&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;badge ${cls}&quot;&gt;${p.ai.signal}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;${p.ai.score}&lt;/span&gt;&lt;span&gt;${p.ai.timing}&lt;/span&gt;&lt;span&gt;${status}&lt;/span&gt;`;
+  table.insertBefore(row,table.children[1]||null);
+}
+
+function selectAndLog(p,status=&#x27;GENERATED&#x27;){
+  selectToken(p);
+  addSignalHistory(p,status);
+}
+
+function generateNextSignal(){
+  if(!pairs.length){fetchDex();return}
+  const list=getSignalCandidates();
+  if(!list.length){setStatus(&#x27;Tidak ada kandidat aktif sesuai filter. Longgarkan Max MC / Min Vol / Timing.&#x27;);return}
+  let idx=Number($(&#x27;signalIndex&#x27;)?.value||0);
+  idx=(idx+1)%list.length;
+  $(&#x27;signalIndex&#x27;).value=idx;
+  selectAndLog(list[idx],&#x27;NEXT&#x27;);
+}
+
+function generateLowMCSignal(){
+  if(!pairs.length){fetchDex();return}
+  $(&#x27;mode&#x27;).value=&#x27;Low MC Hunter&#x27;;
+  $(&#x27;rotationMode&#x27;).value=&#x27;lowmc&#x27;;
+  const list=getSignalCandidates();
+  if(!list.length){setStatus(&#x27;Belum ada Low MC aktif. Coba max MC dinaikkan atau min vol diturunkan.&#x27;);return}
+  $(&#x27;signalIndex&#x27;).value=0;
+  selectAndLog(list[0],&#x27;LOW MC&#x27;);
+  renderActiveSignals();
 }
 
 function startAuto(){stopAuto();fetchDex();timer=setInterval(fetchDex,Number($(&#x27;refreshSec&#x27;).value||30)*1000);setStatus(&#x27;auto refresh started&#x27;)}
@@ -2770,7 +2855,7 @@ function stopAuto(){if(timer)clearInterval(timer);timer=null;setStatus(&#x27;aut
 &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
-" onload="resizeFrame('solFrame')"></iframe></div></section>
+" onload="resizeFrame(\'solFrame\')"></iframe></div></section>
 </div>
 
 <script>
