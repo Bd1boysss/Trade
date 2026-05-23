@@ -406,7 +406,12 @@ h1{font-size:22px}.sub{font-size:12px;color:var(--muted);margin-top:4px}.pill{fo
     <div class="tab" onclick="showMainTab('eaBoys',this)"><b>EA Boys V8</b><span>Logic MQ5 jadi AI signal</span></div>
   </div>
 
-  <section id="trade" class="section active"><div class="frame-card"><iframe class="app-frame" id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
+  <section id="trade" class="section active">
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">Trade Future — Chart Disabled</div>
+      <div class="note">Semua chart/live candlestick sudah dihapus. Fitur sinyal, strategi, backtest, TP/SL, history, dan tools lain tetap aktif di bawah.</div>
+    </div>
+<div class="frame-card"><iframe class="app-frame" id="tradeFrame" srcdoc="&lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;id&quot;&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;UTF-8&quot;&gt;
@@ -916,6 +921,31 @@ input[type=number]:focus { outline: none; border-color: var(--blue); }
 .live2-log-row:last-child{border-bottom:none}.live2-log-row .buy{color:#4ade80;font-weight:900}.live2-log-row .sell{color:#f87171;font-weight:900}.live2-log-row .tp{color:#4ade80;font-weight:900}.live2-log-row .sl{color:#f87171;font-weight:900}
 @media(max-width:850px){.live2-controls,.live2-grid{grid-template-columns:repeat(2,1fr)}.live2-levels{grid-template-columns:repeat(2,1fr)}.live2-chart-wrap{height:390px}.live2-log-row{grid-template-columns:60px 54px 1fr 70px}.live2-log-row span:last-child{display:none}}
 
+
+/* CHARTS REMOVED ONLY - features remain */
+canvas,
+iframe,
+[id*=&quot;chart&quot; i],
+[class*=&quot;chart&quot; i],
+[id*=&quot;candle&quot; i],
+[class*=&quot;candle&quot; i],
+[id*=&quot;tv&quot; i],
+[class*=&quot;tradingview&quot; i],
+[class*=&quot;lightweight&quot; i] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+}
+
+/* keep non-chart wrappers readable */
+.card, .panel, .section, .container, body, main, div {
+  visibility: visible;
+}
 &lt;/style&gt;
 &lt;/head&gt;
 &lt;body&gt;
@@ -2130,7 +2160,58 @@ updateLive2StrategyInfo();
 setLiveButtons(false);
 &lt;/script&gt;
 &lt;/body&gt;
-&lt;/html&gt;" onload="resizeFrame('tradeFrame')"></iframe></div></section>
+&lt;/html&gt;
+&lt;script&gt;
+(function(){
+  function removeOnlyChartBlocks(){
+    const chartWords = [
+      &#x27;Live Candlestick Chart&#x27;,
+      &#x27;Preview candle loaded&#x27;,
+      &#x27;Start Live Signal untuk live data&#x27;,
+      &#x27;Realtime BTC Chart&#x27;,
+      &#x27;TradingView&#x27;,
+      &#x27;candlestick&#x27;,
+      &#x27;chart&#x27;
+    ];
+
+    // Hide obvious chart widgets/canvases
+    document.querySelectorAll(&#x27;canvas, iframe&#x27;).forEach(el =&gt; {
+      el.style.display=&#x27;none&#x27;;
+      el.style.height=&#x27;0&#x27;;
+      el.style.maxHeight=&#x27;0&#x27;;
+      el.style.visibility=&#x27;hidden&#x27;;
+    });
+
+    // Hide cards/blocks whose title says chart/candlestick, but do not touch signal/backtest/history cards
+    document.querySelectorAll(&#x27;div, section, article&#x27;).forEach(el =&gt; {
+      const txt=(el.innerText||&#x27;&#x27;).trim();
+      if(!txt) return;
+
+      const isChartBlock =
+        txt.includes(&#x27;Live Candlestick Chart&#x27;) ||
+        txt.includes(&#x27;Preview candle loaded&#x27;) ||
+        txt.includes(&#x27;Start Live Signal untuk live data&#x27;) ||
+        txt.includes(&#x27;Realtime BTC Chart&#x27;) ||
+        (txt.length &lt; 300 &amp;&amp; /chart|candlestick|tradingview/i.test(txt));
+
+      const isImportantFeature =
+        /signal|strategy|backtest|history|profit|loss|trade|poly|scanner|EA|score|mode|TP|SL/i.test(txt)
+        &amp;&amp; !txt.includes(&#x27;Live Candlestick Chart&#x27;)
+        &amp;&amp; !txt.includes(&#x27;Preview candle loaded&#x27;);
+
+      if(isChartBlock &amp;&amp; !isImportantFeature){
+        el.style.display=&#x27;none&#x27;;
+        el.style.height=&#x27;0&#x27;;
+        el.style.maxHeight=&#x27;0&#x27;;
+        el.style.overflow=&#x27;hidden&#x27;;
+      }
+    });
+  }
+  window.addEventListener(&#x27;load&#x27;,()=&gt;{setTimeout(removeOnlyChartBlocks,200);setTimeout(removeOnlyChartBlocks,1000);});
+  setInterval(removeOnlyChartBlocks,1500);
+})();
+&lt;/script&gt;
+" onload="resizeFrame(\'tradeFrame\')"></iframe></div></section>
 
   <section id="poly" class="section">
     <div class="card">
